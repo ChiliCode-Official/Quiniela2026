@@ -146,6 +146,49 @@
           <h3>Mis Pronósticos</h3>
           <p>Ingresa tus resultados antes de la fecha del partido.</p>
         </div>
+        <div id="quiniela-alerts" class="alerts-banner hide"></div>
+        
+        <!-- Filtros de Búsqueda -->
+        <div class="filter-bar m-card">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="search-q" placeholder="Buscar por equipo..." autocomplete="off">
+          </div>
+          <div class="filters-row">
+            <div class="select-wrapper">
+              <i class="fa-solid fa-trophy"></i>
+              <select id="filter-stage-q">
+                <option value="all">Todas las etapas</option>
+                <option value="grupos">Fase de Grupos</option>
+                <option value="16avos">Dieciseisavos de Final</option>
+                <option value="octavos">Octavos de Final</option>
+                <option value="cuartos">Cuartos de Final</option>
+                <option value="semis">Semifinales</option>
+                <option value="tercer">Tercer Puesto</option>
+                <option value="final">Gran Final</option>
+              </select>
+            </div>
+            <div class="select-wrapper" id="group-filter-wrapper-q">
+              <i class="fa-solid fa-people-group"></i>
+              <select id="filter-group-q">
+                <option value="all">Todos los grupos</option>
+                <option value="Grupo A">Grupo A</option>
+                <option value="Grupo B">Grupo B</option>
+                <option value="Grupo C">Grupo C</option>
+                <option value="Grupo D">Grupo D</option>
+                <option value="Grupo E">Grupo E</option>
+                <option value="Grupo F">Grupo F</option>
+                <option value="Grupo G">Grupo G</option>
+                <option value="Grupo H">Grupo H</option>
+                <option value="Grupo I">Grupo I</option>
+                <option value="Grupo J">Grupo J</option>
+                <option value="Grupo K">Grupo K</option>
+                <option value="Grupo L">Grupo L</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div id="quiniela-list" class="cards-container">
           <div style="text-align:center; padding: 40px; color: var(--text-muted);">
             <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
@@ -167,6 +210,48 @@
           <h3>Resultados Reales</h3>
           <p>Marcadores y tus puntos obtenidos.</p>
         </div>
+        
+        <!-- Filtros de Búsqueda Resultados -->
+        <div class="filter-bar m-card">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="search-r" placeholder="Buscar por equipo..." autocomplete="off">
+          </div>
+          <div class="filters-row">
+            <div class="select-wrapper">
+              <i class="fa-solid fa-trophy"></i>
+              <select id="filter-stage-r">
+                <option value="all">Todas las etapas</option>
+                <option value="grupos">Fase de Grupos</option>
+                <option value="16avos">Dieciseisavos de Final</option>
+                <option value="octavos">Octavos de Final</option>
+                <option value="cuartos">Cuartos de Final</option>
+                <option value="semis">Semifinales</option>
+                <option value="tercer">Tercer Puesto</option>
+                <option value="final">Gran Final</option>
+              </select>
+            </div>
+            <div class="select-wrapper" id="group-filter-wrapper-r">
+              <i class="fa-solid fa-people-group"></i>
+              <select id="filter-group-r">
+                <option value="all">Todos los grupos</option>
+                <option value="Grupo A">Grupo A</option>
+                <option value="Grupo B">Grupo B</option>
+                <option value="Grupo C">Grupo C</option>
+                <option value="Grupo D">Grupo D</option>
+                <option value="Grupo E">Grupo E</option>
+                <option value="Grupo F">Grupo F</option>
+                <option value="Grupo G">Grupo G</option>
+                <option value="Grupo H">Grupo H</option>
+                <option value="Grupo I">Grupo I</option>
+                <option value="Grupo J">Grupo J</option>
+                <option value="Grupo K">Grupo K</option>
+                <option value="Grupo L">Grupo L</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div id="resultados-list" class="cards-container"></div>
       </div>
 
@@ -179,7 +264,7 @@
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-green" style="width: 25px;"></i> <b>Acierto Exacto (2 Puntos):</b> Adivinar el marcador exacto del partido.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-yellow" style="width: 25px;"></i> <b>Acierto Resultado (1 Punto):</b> Acertar qué equipo gana o si hay empate, sin atinarle al marcador.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-xmark text-red" style="width: 25px;"></i> <b>Fallo (0 Puntos):</b> No acertar el ganador ni el empate.</li>
-            <li style="margin-bottom: 15px;"><i class="fa-solid fa-clock text-primary" style="width: 25px;"></i> <b>Cierre:</b> Solo puedes enviar pronóstico antes de que el partido comience.</li>
+            <li style="margin-bottom: 15px;"><i class="fa-solid fa-clock text-primary" style="width: 25px;"></i> <b>Cierre:</b> Solo puedes enviar pronósticos hasta 1 día (24 horas) antes del inicio del partido.</li>
           </ul>
         </div>
       </div>

@@ -643,3 +643,240 @@ h1, h2, h3 { font-weight: 600; }
 @media (max-width: 600px) {
   .branding-footer { margin-bottom: 20px; }
 }
+
+/* ================= FILTROS Y BUSCADOR (GLASSMORPHISM & GLOW) ================= */
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.filter-bar:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .filter-bar:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.search-box {
+  position: relative;
+  width: 100%;
+}
+
+.search-box i {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  transition: color 0.3s;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 12px 12px 12px 42px;
+  background: var(--surface-variant);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-box input:focus {
+  background: var(--surface);
+  border-color: var(--primary);
+  box-shadow: 0 0 12px rgba(11, 87, 208, 0.35); /* Glow azul */
+}
+
+[data-theme="dark"] .search-box input:focus {
+  box-shadow: 0 0 16px rgba(168, 199, 250, 0.4); /* Glow azul oscuro */
+}
+
+.search-box input:focus + i {
+  color: var(--primary);
+}
+
+.filters-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.select-wrapper i {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.select-wrapper select {
+  width: 100%;
+  padding: 11px 28px 11px 36px;
+  background: var(--surface-variant);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.select-wrapper select:focus {
+  background: var(--surface);
+  border-color: var(--primary);
+  box-shadow: 0 0 10px rgba(11, 87, 208, 0.3);
+}
+
+/* Custom Dropdown Chevron using FontAwesome icon */
+.select-wrapper::after {
+  content: '\f078'; /* FontAwesome chevron-down */
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  font-size: 0.75rem;
+}
+
+/* Glow en los inputs de goles activos */
+.score-input:focus {
+  box-shadow: 0 0 15px rgba(11, 87, 208, 0.4);
+  border-color: var(--primary);
+}
+
+[data-theme="dark"] .score-input:focus {
+  box-shadow: 0 0 15px rgba(168, 199, 250, 0.5);
+}
+
+/* ================= ALERTS BANNER (AVISOS DE CIERRE CON GLOW) ================= */
+.alerts-banner {
+  background: rgba(227, 116, 0, 0.08);
+  border: 2px dashed var(--warning);
+  color: var(--warning);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 0 12px rgba(227, 116, 0, 0.2);
+  animation: glowPulse 3s infinite ease-in-out;
+}
+
+[data-theme="dark"] .alerts-banner {
+  background: rgba(253, 198, 156, 0.06);
+  border-color: var(--warning);
+  box-shadow: 0 0 16px rgba(253, 198, 156, 0.15);
+}
+
+.alerts-banner ul {
+  list-style: none;
+  padding-left: 0;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.alerts-banner ul li {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@keyframes glowPulse {
+  0% { box-shadow: 0 0 10px rgba(227, 116, 0, 0.15); }
+  50% { box-shadow: 0 0 18px rgba(227, 116, 0, 0.35); }
+  100% { box-shadow: 0 0 10px rgba(227, 116, 0, 0.15); }
+}
+
+/* ================= INFORMACIÓN DE CIERRE EN CARD ================= */
+.match-timing-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--surface-variant);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+}
+
+.match-timing-info .close-time {
+  color: var(--danger);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.match-timing-info .match-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+/* ================= ESTADO UN-SAVED / BOTONES PENDIENTES CON GLOW ================= */
+/* Estilo del botón guardar cuando se cambia un input pero no se ha guardado */
+.btn-save-prono.pending-save {
+  background: var(--primary) !important;
+  color: var(--on-primary) !important;
+  box-shadow: 0 0 14px rgba(11, 87, 208, 0.4);
+  animation: glowPulsePrimary 2s infinite ease-in-out;
+  transform: scale(1.02);
+}
+
+[data-theme="dark"] .btn-save-prono.pending-save {
+  box-shadow: 0 0 18px rgba(168, 199, 250, 0.5);
+  animation: glowPulsePrimaryDark 2s infinite ease-in-out;
+}
+
+@keyframes glowPulsePrimary {
+  0% { box-shadow: 0 0 10px rgba(11, 87, 208, 0.3); }
+  50% { box-shadow: 0 0 18px rgba(11, 87, 208, 0.6); }
+  100% { box-shadow: 0 0 10px rgba(11, 87, 208, 0.3); }
+}
+
+@keyframes glowPulsePrimaryDark {
+  0% { box-shadow: 0 0 10px rgba(168, 199, 250, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(168, 199, 250, 0.7); }
+  100% { box-shadow: 0 0 10px rgba(168, 199, 250, 0.3); }
+}
+
+/* Tarjetas Bloqueadas */
+.match-card.locked-card {
+  opacity: 0.75;
+  background: rgba(0, 0, 0, 0.02);
+  border-style: dashed;
+}
+
+[data-theme="dark"] .match-card.locked-card {
+  background: rgba(255, 255, 255, 0.02);
+}
