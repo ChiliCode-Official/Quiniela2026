@@ -7,17 +7,18 @@ function safeNewDate(dateStr) {
   if (str.indexOf(' ') !== -1 && str.indexOf('T') === -1) {
     str = str.replace(' ', 'T');
   }
-  const tIndex = str.indexOf('T');
-  if (tIndex !== -1) {
-    const timePart = str.substring(tIndex + 1);
-    const colons = timePart.split(':');
-    if (colons.length > 3) {
-      const offsetMatch = timePart.match(/([+-]\d{2}:\d{2})$/);
-      const offset = offsetMatch ? offsetMatch[1] : '';
-      const cleanTime = colons[0] + ':' + colons[1] + ':' + colons[2];
-      str = str.substring(0, tIndex + 1) + cleanTime + offset;
+  
+  // Detectar y limpiar segundos/milisegundos extra formateados con colón (ej. :00:00-06:00 o :00:00)
+  const malformedMatch = str.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}):\d{2}([+-]\d{2}:\d{2})$/);
+  if (malformedMatch) {
+    str = malformedMatch[1] + malformedMatch[2];
+  } else {
+    const malformedNoOffset = str.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}):\d{2}$/);
+    if (malformedNoOffset) {
+      str = malformedNoOffset[1];
     }
   }
+
   const d = new Date(str);
   if (isNaN(d.getTime())) {
     const match = str.match(/^(\d{4}-\d{2}-\d{2})/);
