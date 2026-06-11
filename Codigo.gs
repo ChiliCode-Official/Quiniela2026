@@ -29,17 +29,19 @@ function doGet(e) {
     // Server-side time check
     if (partidoData) {
       const status = partidoData[5];
-      const matchDate = new Date(partidoData[7]); // Column H: Fecha
+      const lockTime = getLockTimeMX(partidoData[7]); // Column H: Fecha
       const now = new Date();
-      if (status === 'FINISHED' || status === 'IN_PLAY' || now >= matchDate) {
-         return jsonResponse({ success: false, message: 'El partido ya inició o terminó' });
+      if (status === 'FINISHED' || status === 'IN_PLAY' || (lockTime && now >= lockTime)) {
+         return jsonResponse({ success: false, message: 'El tiempo límite para este partido ha expirado' });
       }
     }
     
+    const targetUser = e.parameter.username.toString().trim().toLowerCase();
     const pronosData = sheetPronosticos.getDataRange().getValues();
     let updated = false;
     for (let i = 1; i < pronosData.length; i++) {
-      if (pronosData[i][0] === e.parameter.username && pronosData[i][1] == e.parameter.partidoId) {
+      const currentPrUser = pronosData[i][0].toString().trim().toLowerCase();
+      if (currentPrUser === targetUser && pronosData[i][1] == e.parameter.partidoId) {
         sheetPronosticos.getRange(i + 1, 3).setValue(e.parameter.golesLocal);
         sheetPronosticos.getRange(i + 1, 4).setValue(e.parameter.golesVisitante);
         updated = true; break;
@@ -60,13 +62,17 @@ function doGet(e) {
   
   if (action === 'getPodio') {
     const data = SpreadsheetApp.getActive().getSheetByName('Usuarios').getDataRange().getValues();
-    const podio = data.slice(1).map(row => ({ username: row[0], puntos: row[2] || 0 })).sort((a, b) => b.puntos - a.puntos);
+    const podio = data.slice(1)
+                      .map(row => ({ username: row[1], puntos: row[3] || 0 }))
+                      .sort((a, b) => b.puntos - a.puntos);
     return jsonResponse({ success: true, podio });
   }
 
   if (action === 'getMisPronosticos') {
     const data = SpreadsheetApp.getActive().getSheetByName('Pronosticos').getDataRange().getValues();
-    const pronosticos = data.slice(1).filter(row => row[0] === e.parameter.username)
+    const targetUser = e.parameter.username.toString().trim().toLowerCase();
+    const pronosticos = data.slice(1)
+                            .filter(row => row[0].toString().trim().toLowerCase() === targetUser)
                             .map(row => ({ partidoId: row[1], golesLocal: row[2], golesVisitante: row[3] }));
     return jsonResponse({ success: true, pronosticos });
   }
@@ -77,6 +83,14 @@ function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON)
     .setHeader("Access-Control-Allow-Origin", "*");
+}
+
+function getLockTimeMX(dateVal) {
+  if (!dateVal) return null;
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+  const dateStr = Utilities.formatDate(d, "America/Mexico_City", "yyyy-MM-dd");
+  return new Date(dateStr + "T00:00:00-06:00");
 }
 
 // ================= AUTOMATIZACIÓN ZERO-TOUCH =================
@@ -146,8 +160,15 @@ function calcularYOtorgarPuntos(partidoId, resHome, resAway) {
   const sheetUsuarios = SpreadsheetApp.getActive().getSheetByName('Usuarios');
   const pronosData = SpreadsheetApp.getActive().getSheetByName('Pronosticos').getDataRange().getValues();
   const usersData = sheetUsuarios.getDataRange().getValues();
+  
   let userRowMap = {};
-  for (let i = 1; i < usersData.length; i++) userRowMap[usersData[i][1]] = i + 1;
+  for (let i = 1; i < usersData.length; i++) {
+    const username = usersData[i][1] ? usersData[i][1].toString().trim().toLowerCase() : '';
+    if (username) {
+      userRowMap[username] = i + 1;
+    }
+  }
+  
   let ganadorReal = resHome > resAway ? 1 : (resHome < resAway ? -1 : 0);
   
   pronosData.slice(1).forEach(row => {
@@ -158,8 +179,10 @@ function calcularYOtorgarPuntos(partidoId, resHome, resAway) {
         let ganadorProno = row[2] > row[3] ? 1 : (row[2] < row[3] ? -1 : 0);
         if (ganadorReal === ganadorProno) pts = 1;
       }
-      if (pts > 0 && userRowMap[row[0]]) {
-        let rIdx = userRowMap[row[0]];
+      
+      const pronoUser = row[0] ? row[0].toString().trim().toLowerCase() : '';
+      if (pts > 0 && pronoUser && userRowMap[pronoUser]) {
+        let rIdx = userRowMap[pronoUser];
         sheetUsuarios.getRange(rIdx, 4).setValue((sheetUsuarios.getRange(rIdx, 4).getValue() || 0) + pts);
       }
     }
@@ -294,7 +317,7 @@ function cargarPartidosOficiales() {
     const dateMatch = line.match(/\\[(.*?)\\]/);
     if(!dateMatch) return;
     // Agregamos -06:00 asumiendo hora central de México por los horarios
-    const dateStr = dateMatch[1].replace(' ', 'T') + ':00-06:00';
+    const dateStr = dateMatch[1].replace(' ', 'T') + '-06:00';
     
     const parts = line.split(': ');
     if(parts.length < 2) return;
