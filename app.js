@@ -7,59 +7,7 @@ function safeNewDate(dateStr) {
   if (str.indexOf(' ') !== -1 && str.indexOf('T') === -1) {
     str = str.replace(' ', 'T');
   }
-  
-  // Detectar y limpiar segundos/milisegundos extra formateados con colón (ej. :00:00-06:00 o :00:00)
-  const malformedMatch = str.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}):\d{2}([+-]\d{2}:\d{2})$/);
-  if (malformedMatch) {
-    str = malformedMatch[1] + malformedMatch[2];
-  } else {
-    const malformedNoOffset = str.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}):\d{2}$/);
-    if (malformedNoOffset) {
-      str = malformedNoOffset[1];
-    }
-  }
-
-  const d = new Date(str);
-  if (isNaN(d.getTime())) {
-    const match = str.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (match) {
-      return new Date(match[1] + "T00:00:00-06:00");
-    }
-  }
-  return d;
-}
-
-function getLockTimeMX(dateStr) {
-  if (!dateStr) return null;
-  const d = safeNewDate(dateStr);
-  if (isNaN(d.getTime())) return null;
-  try {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Mexico_City',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-    const parts = formatter.formatToParts(d);
-    let year, month, day;
-    for (const part of parts) {
-      if (part.type === 'year') year = part.value;
-      if (part.type === 'month') month = part.value;
-      if (part.type === 'day') day = part.value;
-    }
-    const mxIsoStr = `${year}-${month}-${day}T00:00:00-06:00`;
-    return new Date(mxIsoStr);
-  } catch (e) {
-    const lockTime = new Date(d.getTime());
-    lockTime.setHours(0, 0, 0, 0);
-    return lockTime;
-  }
-}
-
-async function safeFetch(urlParams) {
-  const paramsStr = typeof urlParams === 'string' ? urlParams : urlParams.toString();
-  const fullUrl = `${SCRIPT_URL}?${paramsStr}&_=${Date.now()}`;
-  return fetch(fullUrl, { cache: 'no-store' });
+  return new Date(str);
 }
 
 function loadLocalInputCache() {
@@ -145,8 +93,9 @@ function updateAlertsBanner() {
     const hasCachedProno = localInputCache[match.partidoId] && localInputCache[match.partidoId].golesLocal !== '' && localInputCache[match.partidoId].golesVisitante !== '';
     const hasPrediction = hasSavedProno || hasCachedProno;
     if (!hasPrediction && (match.status === 'SCHEDULED' || match.status === 'TIMED')) {
-      const lockTime = getLockTimeMX(match.date);
-      if (lockTime) {
+      const matchDate = match.date ? safeNewDate(match.date) : null;
+      if (matchDate) {
+        const lockTime = new Date(matchDate.getTime() - oneDayMs);
         const diff = lockTime - now;
         
         if (diff > 0) {
@@ -204,8 +153,9 @@ function checkAndSendNotifications() {
     const hasCachedProno = localInputCache[match.partidoId] && localInputCache[match.partidoId].golesLocal !== '' && localInputCache[match.partidoId].golesVisitante !== '';
     const hasPrediction = hasSavedProno || hasCachedProno;
     if (!hasPrediction && (match.status === 'SCHEDULED' || match.status === 'TIMED')) {
-      const lockTime = getLockTimeMX(match.date);
-      if (lockTime) {
+      const matchDate = match.date ? safeNewDate(match.date) : null;
+      if (matchDate) {
+        const lockTime = new Date(matchDate.getTime() - oneDayMs);
         const diff = lockTime - now;
         
         if (diff > 0) {
@@ -397,8 +347,8 @@ if (savedEmail && savedPass) {
 
 async function autoLogin(email, pass) {
   try {
-    const queryParams = new URLSearchParams({ action: 'login', email: email, password: pass });
-    const res = await safeFetch(queryParams);
+    const queryParams = new URLSearchParams({ action: 'login', email: email, password: pass }).toString();
+    const res = await fetch(`${SCRIPT_URL}?${queryParams}`);
     const data = await res.json();
     document.getElementById('loading-overlay').classList.add('hide');
     if (data.success) {
@@ -454,8 +404,8 @@ async function handleAuth(e, action) {
   document.getElementById('loading-overlay').classList.remove('hide');
   
   try {
-    const queryParams = new URLSearchParams({ action, email: emailInput, username: usernameInput, password: passwordInputValue });
-    const res = await safeFetch(queryParams);
+    const queryParams = new URLSearchParams({ action, email: emailInput, username: usernameInput, password: passwordInputValue }).toString();
+    const res = await fetch(`${SCRIPT_URL}?${queryParams}`);
     const data = await res.json();
     
     document.getElementById('loading-overlay').classList.add('hide');
@@ -482,6 +432,8 @@ async function handleAuth(e, action) {
 }
 
 // --- APP INITIALIZATION ---
+let hasShownConfetti = false;
+
 async function initApp() {
   document.getElementById('auth-view').classList.remove('active-view');
   document.getElementById('main-view').classList.add('active-view');
@@ -499,17 +451,69 @@ async function initApp() {
   
   await loadMatchesData();
   
+  // Confetti and rank logic
+  loadUserRankAndConfetti();
+  
   // Ejecutar verificación de recordatorios
   checkAndSendNotifications();
 }
 
+async function loadUserRankAndConfetti() {
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getPodio`);
+    const data = await res.json();
+    if (data.success && data.podio) {
+      const index = data.podio.findIndex(u => u.username === currentUser);
+      if (index !== -1) {
+        const rank = index + 1;
+        const displayRank = document.getElementById('display-rank');
+        if (displayRank) {
+          displayRank.textContent = `#${rank}`;
+          displayRank.style.display = 'inline-block';
+          if (rank === 1) {
+            displayRank.style.background = '#FFD700'; // Gold
+          } else if (rank === 2) {
+            displayRank.style.background = '#C0C0C0'; // Silver
+          } else if (rank === 3) {
+            displayRank.style.background = '#CD7F32'; // Bronze
+          } else {
+            displayRank.style.background = 'var(--primary)';
+            displayRank.style.color = 'white';
+          }
+        }
+      }
+      
+      // Confetti Logic (Solo si los puntos aumentaron)
+      const savedPointsKey = `last_known_points_${currentUser}`;
+      const lastPoints = parseInt(localStorage.getItem(savedPointsKey)) || 0;
+      
+      if (currentPoints > lastPoints && !hasShownConfetti) {
+        hasShownConfetti = true;
+        if (window.confetti) {
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 },
+            zIndex: 9999
+          });
+        }
+      }
+      
+      // Guardamos la puntuación actual para la próxima vez
+      localStorage.setItem(savedPointsKey, currentPoints);
+    }
+  } catch(e) {
+    console.error("Error loading rank", e);
+  }
+}
+
 async function loadMatchesData() {
   try {
-    const resPartidos = await safeFetch('action=getPartidos');
+    const resPartidos = await fetch(`${SCRIPT_URL}?action=getPartidos`);
     const dataPartidos = await resPartidos.json();
     if (dataPartidos.success) matchesData = dataPartidos.matches;
     
-    const resPronos = await safeFetch(`action=getMisPronosticos&username=${encodeURIComponent(currentUser)}`);
+    const resPronos = await fetch(`${SCRIPT_URL}?action=getMisPronosticos&username=${currentUser}`);
     const dataPronos = await resPronos.json();
     if (dataPronos.success) userPredictions = dataPronos.pronosticos;
     
@@ -568,10 +572,9 @@ function renderQuiniela() {
   });
   
   const now = new Date();
+  const oneDayMs = 24 * 60 * 60 * 1000;
   
   filteredMatches.forEach(match => {
-    const lockTime = getLockTimeMX(match.date);
-    const isLocked = lockTime && now >= lockTime;
     const cached = localInputCache[match.partidoId];
     const prono = userPredictions.find(p => p.partidoId == match.partidoId);
     
@@ -579,29 +582,22 @@ function renderQuiniela() {
     let pVisit = '';
     let isPending = false;
     
-    if (isLocked) {
-      if (cached) {
-        delete localInputCache[match.partidoId];
-        saveLocalInputCache();
+    if (cached) {
+      pLocal = cached.golesLocal;
+      pVisit = cached.golesVisitante;
+      const savedLocal = prono ? String(prono.golesLocal).trim() : '';
+      const savedVisit = prono ? String(prono.golesVisitante).trim() : '';
+      if (String(pLocal).trim() !== savedLocal || String(pVisit).trim() !== savedVisit) {
+        isPending = true;
       }
-      if (prono) {
-        pLocal = String(prono.golesLocal).trim();
-        pVisit = String(prono.golesVisitante).trim();
-      }
-    } else {
-      if (cached) {
-        pLocal = cached.golesLocal;
-        pVisit = cached.golesVisitante;
-        const savedLocal = prono ? String(prono.golesLocal).trim() : '';
-        const savedVisit = prono ? String(prono.golesVisitante).trim() : '';
-        if (String(pLocal).trim() !== savedLocal || String(pVisit).trim() !== savedVisit) {
-          isPending = true;
-        }
-      } else if (prono) {
-        pLocal = String(prono.golesLocal).trim();
-        pVisit = String(prono.golesVisitante).trim();
-      }
+    } else if (prono) {
+      pLocal = String(prono.golesLocal).trim();
+      pVisit = String(prono.golesVisitante).trim();
     }
+    
+    const matchDate = match.date ? safeNewDate(match.date) : null;
+    const lockTime = matchDate ? new Date(matchDate.getTime() - oneDayMs) : null;
+    const isLocked = lockTime && now >= lockTime;
     
     let btnText = '';
     let btnClass = 'btn-save-prono';
@@ -613,13 +609,13 @@ function renderQuiniela() {
       btnText = '<i class="fa-solid fa-circle-exclamation"></i> Guardar Cambios';
     } else if (prono) {
       btnClass += ' saved';
-      btnText = '<i class="fa-solid fa-check"></i> Actualizado';
+      btnText = '<i class="fa-solid fa-check"></i> Actualizar';
     } else {
       btnText = 'Guardar Pronóstico';
     }
     
     let timingHtml = '';
-    if (lockTime) {
+    if (matchDate && lockTime) {
       timingHtml = `
         <div class="match-timing-info">
           <div class="match-time">
@@ -677,7 +673,7 @@ function renderQuiniela() {
           if (hVal === savedLocal && aVal === savedVisit) {
             delete localInputCache[match.partidoId];
             btnSave.className = 'btn-save-prono' + (prono ? ' saved' : '');
-            btnSave.innerHTML = prono ? '<i class="fa-solid fa-check"></i> Actualizado' : 'Guardar Pronóstico';
+            btnSave.innerHTML = prono ? '<i class="fa-solid fa-check"></i> Actualizar' : 'Guardar Pronóstico';
           } else {
             localInputCache[match.partidoId] = {
               golesLocal: hVal,
@@ -690,22 +686,8 @@ function renderQuiniela() {
           updateAlertsBanner();
         };
         
-        const triggerAutoSave = () => {
-          const hVal = hInput.value.trim();
-          const aVal = aInput.value.trim();
-          if (hVal !== '' && aVal !== '') {
-            const savedLocal = prono ? String(prono.golesLocal).trim() : '';
-            const savedVisit = prono ? String(prono.golesVisitante).trim() : '';
-            if (hVal !== savedLocal || aVal !== savedVisit) {
-              savePrediction(match.partidoId, btnSave);
-            }
-          }
-        };
-        
         hInput.addEventListener('input', handleInput);
         aInput.addEventListener('input', handleInput);
-        hInput.addEventListener('change', triggerAutoSave);
-        aInput.addEventListener('change', triggerAutoSave);
       }
     }
   });
@@ -733,9 +715,9 @@ window.savePrediction = async function(partidoId, btn) {
       partidoId: partidoId,
       golesLocal: hInput,
       golesVisitante: aInput
-    });
+    }).toString();
     
-    const res = await safeFetch(queryParams);
+    const res = await fetch(`${SCRIPT_URL}?${queryParams}`);
     const data = await res.json();
     
     btn.disabled = false;
@@ -774,22 +756,47 @@ window.savePrediction = async function(partidoId, btn) {
 
 async function loadPodio() {
   const container = document.getElementById('podio-list');
+  const userEmail = (localStorage.getItem('quiniela_email') || '').toLowerCase().trim();
+  
+  // VERIFICACIÓN: ¿Es Administrador?
+  const isAdmin = (userEmail === 'sistemas@notaria134.com.mx' || userEmail === 'omarlozano@notaria134.com.mx');
+
+  if (!isAdmin) {
+    // Si NO es administrador, mostramos el QR y el mensaje del blog
+    container.innerHTML = `
+      <div style="text-align:center; padding: 20px;">
+        <p style="margin-bottom: 20px; font-weight: 600; color: var(--text-main);">
+          Aquí pueden ver sus resultados oficiales iniciando sesión con su usuario del blog oficial de la notaría.
+        </p>
+        <a href="https://notaria134cdmx.buk.mx/" target="_blank" style="text-decoration:none;">
+          <img src="https://i.imgur.com/BhUqkNB.png" alt="QR Blog" style="width: 100%; max-width: 250px; border-radius: var(--radius-md); box-shadow: var(--shadow); border: 2px solid var(--primary);">
+          <p style="margin-top: 15px; color: var(--primary); font-weight: 800;">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> IR AL BLOG OFICIAL
+          </p>
+        </a>
+      </div>
+    `;
+    return;
+  }
+
+  // Si ES administrador, cargamos los datos reales del servidor
   container.innerHTML = '<div style="text-align:center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin fa-2x text-muted"></i></div>';
   
   try {
-    const res = await safeFetch('action=getPodio');
+    const res = await fetch(`${SCRIPT_URL}?action=getPodio`);
     const data = await res.json();
     
     if (data.success) {
       container.innerHTML = '';
       if (data.podio.length === 0) {
-        container.innerHTML = '<div style="padding:20px; text-align:center; color: var(--text-muted);">Aún no hay puntos.</div>';
+        container.innerHTML = '<div style="padding:20px; text-align:center;">Aún no hay puntos.</div>';
         return;
       }
       
-      const top15 = data.podio.slice(0, 15);
+      // Solo mostramos los primeros 10 lugares para el administrador
+      const top10 = data.podio.slice(0, 10);
       
-      top15.forEach((user, index) => {
+      top10.forEach((user, index) => {
         const topClass = index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : '';
         const icon = index === 0 ? '<i class="fa-solid fa-crown"></i>' : (index + 1);
         
@@ -801,11 +808,15 @@ async function loadPodio() {
           </div>
         `;
       });
-    } else {
-      container.innerHTML = `<div style="padding:15px; text-align:center; color:var(--danger);">${data.message || 'Error al cargar podio.'}</div>`;
+      
+      container.innerHTML += `
+        <div style="text-align:center; padding: 15px; font-size: 0.8rem; color: var(--text-muted);">
+          <i class="fa-solid fa-lock"></i> Vista exclusiva de Administrador (Top 10)
+        </div>
+      `;
     }
   } catch (error) {
-    container.innerHTML = '<div style="padding:15px; text-align:center; color:var(--danger);">Error cargando podio. Revisa tu conexión.</div>';
+    container.innerHTML = '<div style="padding:15px; text-align:center; color:var(--danger);">Error cargando podio.</div>';
   }
 }
 

@@ -1,53 +1,113 @@
-const API_KEY_FOOTBALL = 'b49f90c2f278946fa93176ae1d283ffd';
+function safeNewDate(dateStr) {
+  if (!dateStr) return new Date();
+  if (dateStr instanceof Date) return dateStr;
+  var str = dateStr.toString().trim();
+  if (str.indexOf(' ') !== -1 && str.indexOf('T') === -1) {
+    str = str.replace(' ', 'T');
+  }
+  return new Date(str);
+}
+
+function getApiKey() {
+  return PropertiesService.getScriptProperties().getProperty('API_KEY_FOOTBALL') || "";
+}
+
+function configurarApiKey() {
+  PropertiesService.getScriptProperties().setProperty('API_KEY_FOOTBALL', 'b49f90c2f278946fa93176ae1d283ffd');
+}
 
 function doGet(e) {
+  // Ejecutar migración de pronósticos de un solo uso si es necesario
+  try {
+    migrarPronosticos();
+  } catch (err) {
+    Logger.log("Error en migración: " + err.toString());
+  }
+
   const action = e.parameter.action;
   
   if (action === 'register') {
     const sheetUsuarios = SpreadsheetApp.getActive().getSheetByName('Usuarios');
     const users = sheetUsuarios.getDataRange().getValues();
-    if (users.some((row, i) => i > 0 && (row[0] === e.parameter.email || row[1] === e.parameter.username))) {
+    const email = (e.parameter.email || "").trim().toLowerCase();
+    const username = (e.parameter.username || "").trim();
+    const password = (e.parameter.password || "").trim();
+    
+    if (!email || !username || !password) {
+      return jsonResponse({ success: false, message: 'Faltan campos obligatorios' });
+    }
+    
+    // Verificar si el correo o usuario ya existe de forma insensible a mayúsculas
+    const exists = users.some((row, i) => i > 0 && (
+      row[0].toString().toLowerCase() === email || 
+      row[1].toString().toLowerCase() === username.toLowerCase()
+    ));
+    
+    if (exists) {
       return jsonResponse({ success: false, message: 'El correo o usuario ya existe' });
     }
-    sheetUsuarios.appendRow([e.parameter.email, e.parameter.username, e.parameter.password, 0]);
+    
+    sheetUsuarios.appendRow([email, username, password, 0]);
     return jsonResponse({ success: true, message: 'Registrado con éxito' });
   }
   
   if (action === 'login') {
     const sheetUsuarios = SpreadsheetApp.getActive().getSheetByName('Usuarios');
     const users = sheetUsuarios.getDataRange().getValues();
-    const user = users.find((row, i) => i > 0 && row[0] === e.parameter.email && row[2] === e.parameter.password);
-    if (user) return jsonResponse({ success: true, username: user[1], puntos: user[3] || 0 });
+    const email = (e.parameter.email || "").trim().toLowerCase();
+    const password = (e.parameter.password || "").trim();
+    
+    // Búsqueda insensible a mayúsculas en el email, exacta en password
+    const user = users.find((row, i) => i > 0 && 
+      row[0].toString().toLowerCase() === email && 
+      row[2].toString() === password
+    );
+    
+    if (user) {
+      return jsonResponse({ success: true, username: user[1], puntos: parseInt(user[3]) || 0 });
+    }
     return jsonResponse({ success: false, message: 'Credenciales inválidas' });
   }
   
   if (action === 'predict') {
     const sheetResultados = SpreadsheetApp.getActive().getSheetByName('ResultadosReales');
     const sheetPronosticos = SpreadsheetApp.getActive().getSheetByName('Pronosticos');
-    const partidoData = sheetResultados.getDataRange().getValues().find(row => row[0] == e.parameter.partidoId);
     
-    // Server-side time check
+    const partidoId = e.parameter.partidoId;
+    const username = (e.parameter.username || "").trim();
+    const usernameLower = username.toLowerCase();
+    const golesLocal = e.parameter.golesLocal;
+    const golesVisitante = e.parameter.golesVisitante;
+    
+    const partidoData = sheetResultados.getDataRange().getValues().find(row => row[0] == partidoId);
+    
+    // Verificación de límite de 24 horas antes del partido
     if (partidoData) {
       const status = partidoData[5];
-      const lockTime = getLockTimeMX(partidoData[7]); // Column H: Fecha
-      const now = new Date();
-      if (status === 'FINISHED' || status === 'IN_PLAY' || (lockTime && now >= lockTime)) {
-         return jsonResponse({ success: false, message: 'El tiempo límite para este partido ha expirado' });
+      const matchDateStr = partidoData[7]; // Columna H: Fecha
+      if (matchDateStr) {
+        const matchDate = safeNewDate(matchDateStr);
+        const now = new Date();
+        const lockTime = new Date(matchDate.getTime() - 24 * 60 * 60 * 1000); // 24 horas antes
+        
+        if (status === 'FINISHED' || status === 'IN_PLAY' || now >= lockTime) {
+           return jsonResponse({ success: false, message: 'El tiempo límite para enviar este pronóstico ha expirado (24h antes)' });
+        }
       }
     }
     
-    const targetUser = e.parameter.username.toString().trim().toLowerCase();
     const pronosData = sheetPronosticos.getDataRange().getValues();
     let updated = false;
     for (let i = 1; i < pronosData.length; i++) {
-      const currentPrUser = pronosData[i][0].toString().trim().toLowerCase();
-      if (currentPrUser === targetUser && pronosData[i][1] == e.parameter.partidoId) {
-        sheetPronosticos.getRange(i + 1, 3).setValue(e.parameter.golesLocal);
-        sheetPronosticos.getRange(i + 1, 4).setValue(e.parameter.golesVisitante);
+      if (pronosData[i][0].toString().trim().toLowerCase() === usernameLower && pronosData[i][1] == partidoId) {
+        sheetPronosticos.getRange(i + 1, 3).setValue(golesLocal);
+        sheetPronosticos.getRange(i + 1, 4).setValue(golesVisitante);
         updated = true; break;
       }
     }
-    if (!updated) sheetPronosticos.appendRow([e.parameter.username, e.parameter.partidoId, e.parameter.golesLocal, e.parameter.golesVisitante]);
+    if (!updated) {
+      sheetPronosticos.appendRow([username, partidoId, golesLocal, golesVisitante]);
+    }
     return jsonResponse({ success: true, message: 'Pronóstico guardado' });
   }
   
@@ -61,18 +121,26 @@ function doGet(e) {
   }
   
   if (action === 'getPodio') {
-    const data = SpreadsheetApp.getActive().getSheetByName('Usuarios').getDataRange().getValues();
+    const sheetUsuarios = SpreadsheetApp.getActive().getSheetByName('Usuarios');
+    const data = sheetUsuarios.getDataRange().getValues();
+    
+    // Mapeo seguro: sólo devolvemos username (columna 1) y puntos (columna 3) para evitar leaks
     const podio = data.slice(1)
-                      .map(row => ({ username: row[1], puntos: row[3] || 0 }))
-                      .sort((a, b) => b.puntos - a.puntos);
+      .filter(row => row[1]) // Asegurar que tenga nombre de usuario
+      .map(row => ({
+        username: row[1].toString(),
+        puntos: parseInt(row[3]) || 0
+      }))
+      .sort((a, b) => b.puntos - a.puntos);
+      
     return jsonResponse({ success: true, podio });
   }
 
   if (action === 'getMisPronosticos') {
     const data = SpreadsheetApp.getActive().getSheetByName('Pronosticos').getDataRange().getValues();
-    const targetUser = e.parameter.username.toString().trim().toLowerCase();
+    const reqUser = (e.parameter.username || "").trim().toLowerCase();
     const pronosticos = data.slice(1)
-                            .filter(row => row[0].toString().trim().toLowerCase() === targetUser)
+                            .filter(row => row[0].toString().trim().toLowerCase() === reqUser)
                             .map(row => ({ partidoId: row[1], golesLocal: row[2], golesVisitante: row[3] }));
     return jsonResponse({ success: true, pronosticos });
   }
@@ -81,16 +149,7 @@ function doGet(e) {
 
 function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader("Access-Control-Allow-Origin", "*");
-}
-
-function getLockTimeMX(dateVal) {
-  if (!dateVal) return null;
-  const d = new Date(dateVal);
-  if (isNaN(d.getTime())) return null;
-  const dateStr = Utilities.formatDate(d, "America/Mexico_City", "yyyy-MM-dd");
-  return new Date(dateStr + "T00:00:00-06:00");
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ================= AUTOMATIZACIÓN ZERO-TOUCH =================
@@ -103,15 +162,24 @@ function normalizeName(name) {
     "dinamarca": "denmark", "tunez": "tunisia", "espana": "spain", "alemania": "germany",
     "japon": "japan", "belgica": "belgium", "canada": "canada", "marruecos": "morocco",
     "croacia": "croatia", "brasil": "brazil", "suiza": "switzerland", "camerun": "cameroon",
-    "corea del sur": "south korea", "arabia saudita": "saudi arabia"
+    "corea del sur": "south korea", "arabia saudita": "saudi arabia", "mexico": "mexico",
+    "sudafrica": "south africa", "republica checa": "czech republic", "bosnia y herzegovina": "bosnia & herzegovina",
+    "catar": "qatar", "haiti": "haiti", "escocia": "scotland", "australia": "australia",
+    "turquia": "turkey", "costa de marfil": "ivory coast", "ecuador": "ecuador", "curazao": "curacao",
+    "suecia": "sweden", "uruguay": "uruguay", "cabo verde": "cape verde", "iran": "iran",
+    "nueva zelanda": "new zealand", "egipto": "egypt", "senegal": "senegal", "irak": "iraq",
+    "noruega": "norway", "argentina": "argentina", "argelia": "algeria", "austria": "austria",
+    "jordania": "jordan", "portugal": "portugal", "rd congo": "dr congo", "ghana": "ghana",
+    "panama": "panama", "uzbekistan": "uzbekistan", "colombia": "colombia"
   };
   return translations[n] || n;
 }
 
 function fetchResultadosMundial() {
   const url = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026';
+  const apiKey = getApiKey();
   try {
-    const res = UrlFetchApp.fetch(url, { headers: { 'x-apisports-key': API_KEY_FOOTBALL }, muteHttpExceptions: true });
+    const res = UrlFetchApp.fetch(url, { headers: { 'x-apisports-key': apiKey }, muteHttpExceptions: true });
     if (res.getResponseCode() !== 200) return;
     
     const data = JSON.parse(res.getContentText());
@@ -121,15 +189,27 @@ function fetchResultadosMundial() {
     const sheetResultados = SpreadsheetApp.getActive().getSheetByName('ResultadosReales');
     const resData = sheetResultados.getDataRange().getValues();
     
+    let needRecalc = false;
     for (let i = 1; i < resData.length; i++) {
       const matchId = resData[i][0];
       const sheetHome = normalizeName(resData[i][1]);
       const sheetAway = normalizeName(resData[i][2]);
       
-      const apiMatch = apiMatches.find(m => 
+      // Buscar coincidencia exacta
+      let apiMatch = apiMatches.find(m => 
         normalizeName(m.teams.home.name) === sheetHome && 
         normalizeName(m.teams.away.name) === sheetAway
       );
+      
+      // Fallback: búsqueda difusa/parcial si no se encuentra exacta
+      if (!apiMatch) {
+        apiMatch = apiMatches.find(m => {
+          const apiHome = normalizeName(m.teams.home.name);
+          const apiAway = normalizeName(m.teams.away.name);
+          return (apiHome.includes(sheetHome) || sheetHome.includes(apiHome)) &&
+                 (apiAway.includes(sheetAway) || sheetAway.includes(apiAway));
+        });
+      }
       
       if (apiMatch) {
         const statusShort = apiMatch.fixture.status.short;
@@ -148,183 +228,315 @@ function fetchResultadosMundial() {
         sheetResultados.getRange(i + 1, 8).setValue(matchDate);
         
         if (status === 'FINISHED' && resData[i][6] !== 'SI') {
-          calcularYOtorgarPuntos(matchId, hScore, aScore);
           sheetResultados.getRange(i + 1, 7).setValue('SI');
+          needRecalc = true;
         }
       }
+    }
+    if (needRecalc) {
+      recalcularTodosLosPuntos();
     }
   } catch (error) {}
 }
 
-function calcularYOtorgarPuntos(partidoId, resHome, resAway) {
-  const sheetUsuarios = SpreadsheetApp.getActive().getSheetByName('Usuarios');
-  const pronosData = SpreadsheetApp.getActive().getSheetByName('Pronosticos').getDataRange().getValues();
-  const usersData = sheetUsuarios.getDataRange().getValues();
+function recalcularTodosLosPuntos() {
+  const ss = SpreadsheetApp.getActive();
+  const sheetResultados = ss.getSheetByName('ResultadosReales');
+  const sheetPronosticos = ss.getSheetByName('Pronosticos');
+  const sheetUsuarios = ss.getSheetByName('Usuarios');
   
-  let userRowMap = {};
-  for (let i = 1; i < usersData.length; i++) {
-    const username = usersData[i][1] ? usersData[i][1].toString().trim().toLowerCase() : '';
-    if (username) {
-      userRowMap[username] = i + 1;
+  // 1. Obtener todos los resultados reales terminados
+  const resData = sheetResultados.getDataRange().getValues();
+  const resultadosTerminados = {};
+  for (let i = 1; i < resData.length; i++) {
+    const matchId = resData[i][0];
+    const hScore = parseInt(resData[i][3]);
+    const aScore = parseInt(resData[i][4]);
+    const status = resData[i][5];
+    
+    if ((status === 'FINISHED' || status === 'TERMINADO') && !isNaN(hScore) && !isNaN(aScore)) {
+      resultadosTerminados[matchId] = {
+        hScore: hScore,
+        aScore: aScore,
+        ganadorReal: hScore > aScore ? 1 : (hScore < aScore ? -1 : 0)
+      };
+      // Asegurar que quede marcado como SI procesado
+      sheetResultados.getRange(i + 1, 7).setValue('SI');
     }
   }
   
-  let ganadorReal = resHome > resAway ? 1 : (resHome < resAway ? -1 : 0);
+  // 2. Calcular puntos totales por usuario basándonos en todos los pronósticos y todos los partidos
+  const pronosData = sheetPronosticos.getDataRange().getValues();
+  const userPoints = {};
   
-  pronosData.slice(1).forEach(row => {
-    if (row[1] == partidoId && row[2] !== "" && row[3] !== "") {
-      let pts = 0;
-      if (row[2] == resHome && row[3] == resAway) pts = 2;
-      else {
-        let ganadorProno = row[2] > row[3] ? 1 : (row[2] < row[3] ? -1 : 0);
-        if (ganadorReal === ganadorProno) pts = 1;
-      }
-      
-      const pronoUser = row[0] ? row[0].toString().trim().toLowerCase() : '';
-      if (pts > 0 && pronoUser && userRowMap[pronoUser]) {
-        let rIdx = userRowMap[pronoUser];
-        sheetUsuarios.getRange(rIdx, 4).setValue((sheetUsuarios.getRange(rIdx, 4).getValue() || 0) + pts);
-      }
+  for (let i = 1; i < pronosData.length; i++) {
+    const username = (pronosData[i][0] || "").toString().trim().toLowerCase();
+    const matchId = pronosData[i][1];
+    const pHome = parseInt(pronosData[i][2]);
+    const pAway = parseInt(pronosData[i][3]);
+    
+    if (!userPoints[username]) {
+      userPoints[username] = 0;
     }
-  });
+    
+    if (resultadosTerminados[matchId] && !isNaN(pHome) && !isNaN(pAway)) {
+      const real = resultadosTerminados[matchId];
+      let pts = 0;
+      
+      if (pHome === real.hScore && pAway === real.aScore) {
+        pts = 2; // Marcador exacto
+      } else {
+        const ganadorProno = pHome > pAway ? 1 : (pHome < pAway ? -1 : 0);
+        if (ganadorProno === real.ganadorReal) {
+          pts = 1; // Ganador/Empate acertado
+        }
+      }
+      userPoints[username] += pts;
+    }
+  }
+  
+  // 3. Sobrescribir los puntos finales a los usuarios
+  const usersData = sheetUsuarios.getDataRange().getValues();
+  for (let i = 1; i < usersData.length; i++) {
+    const uNameB = (usersData[i][1] || "").toString().trim().toLowerCase();
+    const uNameA = (usersData[i][0] || "").toString().trim().toLowerCase();
+    
+    let uName = "";
+    if (uNameB && !uNameB.includes('@')) {
+      uName = uNameB;
+    } else if (uNameA) {
+      uName = uNameA;
+    }
+    
+    const finalPts = userPoints[uName] || 0;
+    sheetUsuarios.getRange(i + 1, 4).setValue(finalPts);
+  }
 }
 
 function instalarAutomatizacion() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger("fetchResultadosMundial").timeBased().everyHours(2).create();
-  // Fetch now for immediate effect
   fetchResultadosMundial();
 }
 
+function migrarPronosticos() {
+  const properties = PropertiesService.getScriptProperties();
+  if (properties.getProperty('MIGRATION_DONE') === 'true') {
+    return; // Ya se migró
+  }
+  
+  const ss = SpreadsheetApp.getActive();
+  const sheetPronos = ss.getSheetByName('Pronosticos');
+  if (!sheetPronos) return;
+  
+  const range = sheetPronos.getDataRange();
+  const data = range.getValues();
+  if (data.length <= 1) {
+    properties.setProperty('MIGRATION_DONE', 'true');
+    return; // No hay pronósticos para migrar
+  }
+  
+  // Tabla de mapeo de ID viejo (1-16) al nuevo ID oficial (1-104)
+  const idMap = {
+    "1": 1,   // México vs Sudáfrica
+    "2": 2,   // Corea del Sur vs República Checa
+    "3": 3,   // Canadá vs Bosnia y Herzegovina
+    "4": 4,   // Estados Unidos vs Paraguay
+    "5": 8,   // Catar vs Suiza (Era 5, ahora es 8)
+    "6": 7,   // Brasil vs Marruecos (Era 6, ahora es 7)
+    "7": 5,   // Haití vs Escocia (Era 7, ahora es 5)
+    "8": 6,   // Australia vs Turquía (Era 8, ahora es 6)
+    "9": 10,  // Alemania vs Curazao (Era 9, ahora es 10)
+    "10": 11, // Países Bajos vs Japón (Era 10, ahora es 11)
+    "11": 9,  // Costa de Marfil vs Ecuador (Era 11, ahora es 9)
+    "12": 12, // Suecia vs Túnez (Era 12, ahora es 12)
+    "13": 14, // España vs Cabo Verde (Era 13, ahora es 14)
+    "14": 16, // Bélgica vs Egipto (Era 14, ahora es 16)
+    "15": 13, // Arabia Saudita vs Uruguay (Era 15, ahora es 13)
+    "16": 15  // Irán vs Nueva Zelanda (Era 16, ahora es 15)
+  };
+  
+  let updatedCount = 0;
+  for (let i = 1; i < data.length; i++) {
+    const oldId = data[i][1].toString();
+    if (idMap[oldId]) {
+      sheetPronos.getRange(i + 1, 2).setValue(idMap[oldId]);
+      updatedCount++;
+    }
+  }
+  
+  Logger.log('Migración de pronósticos finalizada: ' + updatedCount + ' registros migrados.');
+  properties.setProperty('MIGRATION_DONE', 'true');
+}
+
 function cargarPartidosOficiales() {
-  const rawText = `
-[2026-06-11 13:00:00] Grupo A - J1: México vs Sudáfrica
-[2026-06-11 20:00:00] Grupo A - J1: Corea del Sur vs República Checa
-[2026-06-12 13:00:00] Grupo B - J1: Canadá vs Bosnia y Herzegovina
-[2026-06-12 19:00:00] Grupo D - J1: Estados Unidos vs Paraguay
-[2026-06-13 13:00:00] Grupo B - J1: Catar vs Suiza
-[2026-06-13 16:00:00] Grupo C - J1: Brasil vs Marruecos
-[2026-06-13 19:00:00] Grupo C - J1: Haití vs Escocia
-[2026-06-13 22:00:00] Grupo D - J1: Australia vs Turquía
-[2026-06-14 11:00:00] Grupo E - J1: Alemania vs Curazao
-[2026-06-14 14:00:00] Grupo F - J1: Países Bajos vs Japón
-[2026-06-14 17:00:00] Grupo E - J1: Costa de Marfil vs Ecuador
-[2026-06-14 20:00:00] Grupo F - J1: Suecia vs Túnez
-[2026-06-15 10:00:00] Grupo H - J1: España vs Cabo Verde
-[2026-06-15 13:00:00] Grupo G - J1: Bélgica vs Egipto
-[2026-06-15 16:00:00] Grupo H - J1: Arabia Saudita vs Uruguay
-[2026-06-15 19:00:00] Grupo G - J1: Irán vs Nueva Zelanda
-[2026-06-16 13:00:00] Grupo I - J1: Francia vs Senegal
-[2026-06-16 16:00:00] Grupo I - J1: Irak vs Noruega
-[2026-06-16 19:00:00] Grupo J - J1: Argentina vs Argelia
-[2026-06-16 22:00:00] Grupo J - J1: Austria vs Jordania
-[2026-06-17 11:00:00] Grupo K - J1: Portugal vs RD Congo
-[2026-06-17 14:00:00] Grupo L - J1: Inglaterra vs Croacia
-[2026-06-17 17:00:00] Grupo L - J1: Ghana vs Panamá
-[2026-06-17 20:00:00] Grupo K - J1: Uzbekistán vs Colombia
-[2026-06-18 10:00:00] Grupo A - J2: República Checa vs Sudáfrica
-[2026-06-18 13:00:00] Grupo B - J2: Suiza vs Bosnia y Herzegovina
-[2026-06-18 16:00:00] Grupo B - J2: Canadá vs Catar
-[2026-06-18 19:00:00] Grupo A - J2: México vs Corea del Sur
-[2026-06-19 13:00:00] Grupo D - J2: Estados Unidos vs Australia
-[2026-06-19 16:00:00] Grupo C - J2: Escocia vs Marruecos
-[2026-06-19 18:30:00] Grupo C - J2: Brasil vs Haití
-[2026-06-19 21:00:00] Grupo D - J2: Turquía vs Paraguay
-[2026-06-20 11:00:00] Grupo F - J2: Países Bajos vs Suecia
-[2026-06-20 14:00:00] Grupo E - J2: Alemania vs Costa de Marfil
-[2026-06-20 18:00:00] Grupo E - J2: Ecuador vs Curazao
-[2026-06-20 22:00:00] Grupo F - J2: Túnez vs Japón
-[2026-06-21 10:00:00] Grupo H - J2: España vs Arabia Saudita
-[2026-06-21 13:00:00] Grupo G - J2: Bélgica vs Irán
-[2026-06-21 16:00:00] Grupo H - J2: Uruguay vs Cabo Verde
-[2026-06-21 19:00:00] Grupo G - J2: Nueva Zelanda vs Egipto
-[2026-06-22 11:00:00] Grupo J - J2: Argentina vs Austria
-[2026-06-22 15:00:00] Grupo I - J2: Francia vs Irak
-[2026-06-22 18:00:00] Grupo I - J2: Noruega vs Senegal
-[2026-06-22 21:00:00] Grupo J - J2: Jordania vs Argelia
-[2026-06-23 11:00:00] Grupo K - J2: Portugal vs Uzbekistán
-[2026-06-23 14:00:00] Grupo L - J2: Inglaterra vs Ghana
-[2026-06-23 17:00:00] Grupo L - J2: Panamá vs Croacia
-[2026-06-23 20:00:00] Grupo K - J2: Colombia vs RD Congo
-[2026-06-24 13:00:00] Grupo B - J3: Suiza vs Canadá
-[2026-06-24 13:00:00] Grupo B - J3: Bosnia y Herzegovina vs Catar
-[2026-06-24 16:00:00] Grupo C - J3: Escocia vs Brasil
-[2026-06-24 16:00:00] Grupo C - J3: Marruecos vs Haití
-[2026-06-24 19:00:00] Grupo A - J3: República Checa vs México
-[2026-06-24 19:00:00] Grupo A - J3: Sudáfrica vs Corea del Sur
-[2026-06-25 14:00:00] Grupo E - J3: Curazao vs Costa de Marfil
-[2026-06-25 14:00:00] Grupo E - J3: Ecuador vs Alemania
-[2026-06-25 17:00:00] Grupo F - J3: Japón vs Suecia
-[2026-06-25 17:00:00] Grupo F - J3: Túnez vs Países Bajos
-[2026-06-25 20:00:00] Grupo D - J3: Turquía vs Estados Unidos
-[2026-06-25 20:00:00] Grupo D - J3: Paraguay vs Australia
-[2026-06-26 13:00:00] Grupo I - J3: Noruega vs Francia
-[2026-06-26 13:00:00] Grupo I - J3: Senegal vs Irak
-[2026-06-26 18:00:00] Grupo H - J3: Cabo Verde vs Arabia Saudita
-[2026-06-26 18:00:00] Grupo H - J3: Uruguay vs España
-[2026-06-26 21:00:00] Grupo G - J3: Egipto vs Irán
-[2026-06-26 21:00:00] Grupo G - J3: Nueva Zelanda vs Bélgica
-[2026-06-27 15:00:00] Grupo L - J3: Panamá vs Inglaterra
-[2026-06-27 15:00:00] Grupo L - J3: Croacia vs Ghana
-[2026-06-27 17:30:00] Grupo K - J3: Colombia vs Portugal
-[2026-06-27 17:30:00] Grupo K - J3: RD Congo vs Uzbekistán
-[2026-06-27 20:00:00] Grupo J - J3: Argelia vs Austria
-[2026-06-27 20:00:00] Grupo J - J3: Jordania vs Argentina
-[2026-06-28 13:00:00] Partido 73: 2A vs 2B
-[2026-06-29 11:00:00] Partido 76: 1E vs 3ABCDF
-[2026-06-29 14:30:00] Partido 74: 1F vs 2C
-[2026-06-29 19:00:00] Partido 75: 1C vs 2F
-[2026-06-30 11:00:00] Partido 78: 1I vs 3CDFGH
-[2026-06-30 15:00:00] Partido 77: 2E vs 2I
-[2026-06-30 19:00:00] Partido 79: 1A vs 3CEFHI
-[2026-07-01 10:00:00] Partido 80: 1L vs 3EHIJK
-[2026-07-01 14:00:00] Partido 82: 1D vs 3BEFIJ
-[2026-07-01 18:00:00] Partido 81: 1G vs 3AEHIJ
-[2026-07-02 13:00:00] Partido 84: 2K vs 2L
-[2026-07-02 17:00:00] Partido 83: 1H vs 2J
-[2026-07-02 21:00:00] Partido 85: 1B vs 3EFGIJ
-[2026-07-03 12:00:00] Partido 88: 1J vs 2H
-[2026-07-03 16:00:00] Partido 86: 1K vs 3DEIJL
-[2026-07-03 19:30:00] Partido 87: 2D vs 2G
-[2026-07-04 11:00:00] Partido 90: Ganador 74 vs Ganador 77
-[2026-07-04 15:00:00] Partido 89: Ganador 73 vs Ganador 75
-[2026-07-05 14:00:00] Partido 91: Ganador 76 vs Ganador 78
-[2026-07-05 18:00:00] Partido 92: Ganador 79 vs Ganador 80
-[2026-07-06 13:00:00] Partido 93: Ganador 83 vs Ganador 84
-[2026-07-06 18:00:00] Partido 94: Ganador 81 vs Ganador 82
-[2026-07-07 10:00:00] Partido 95: Ganador 86 vs Ganador 88
-[2026-07-07 14:00:00] Partido 96: Ganador 85 vs Ganador 87
-[2026-07-09 14:00:00] Partido 97: Ganador 89 vs Ganador 90
-[2026-07-10 13:00:00] Partido 98: Ganador 93 vs Ganador 94
-[2026-07-11 15:00:00] Partido 99: Ganador 91 vs Ganador 92
-[2026-07-11 19:00:00] Partido 100: Ganador 95 vs Ganador 96
-[2026-07-14 13:00:00] Partido 101: Ganador 97 vs Ganador 98
-[2026-07-15 13:00:00] Partido 102: Ganador 99 vs Ganador 100
-[2026-07-18 15:00:00] Partido 103: Perdedor 101 vs Perdedor 102
-[2026-07-19 13:00:00] Partido 104: Ganador 101 vs Ganador 102
-  `;
+  const matches = [
+    { partidoId: 1, equipoLocal: 'México', equipoVisitante: 'Sudáfrica', date: '2026-06-11 13:00:00-06:00' },
+    { partidoId: 2, equipoLocal: 'Corea del Sur', equipoVisitante: 'República Checa', date: '2026-06-11 20:00:00-06:00' },
+    { partidoId: 3, equipoLocal: 'Canadá', equipoVisitante: 'Bosnia y Herzegovina', date: '2026-06-12 13:00:00-06:00' },
+    { partidoId: 4, equipoLocal: 'Estados Unidos', equipoVisitante: 'Paraguay', date: '2026-06-12 19:00:00-06:00' },
+    { partidoId: 5, equipoLocal: 'Haití', equipoVisitante: 'Escocia', date: '2026-06-13 19:00:00-06:00' },
+    { partidoId: 6, equipoLocal: 'Australia', equipoVisitante: 'Turquía', date: '2026-06-13 22:00:00-06:00' },
+    { partidoId: 7, equipoLocal: 'Brasil', equipoVisitante: 'Marruecos', date: '2026-06-13 16:00:00-06:00' },
+    { partidoId: 8, equipoLocal: 'Catar', equipoVisitante: 'Suiza', date: '2026-06-13 13:00:00-06:00' },
+    { partidoId: 9, equipoLocal: 'Costa de Marfil', equipoVisitante: 'Ecuador', date: '2026-06-14 17:00:00-06:00' },
+    { partidoId: 10, equipoLocal: 'Alemania', equipoVisitante: 'Curazao', date: '2026-06-14 11:00:00-06:00' },
+    { partidoId: 11, equipoLocal: 'Países Bajos', equipoVisitante: 'Japón', date: '2026-06-14 14:00:00-06:00' },
+    { partidoId: 12, equipoLocal: 'Suecia', equipoVisitante: 'Túnez', date: '2026-06-14 20:00:00-06:00' },
+    { partidoId: 13, equipoLocal: 'Arabia Saudita', equipoVisitante: 'Uruguay', date: '2026-06-15 16:00:00-06:00' },
+    { partidoId: 14, equipoLocal: 'España', equipoVisitante: 'Cabo Verde', date: '2026-06-15 10:00:00-06:00' },
+    { partidoId: 15, equipoLocal: 'Irán', equipoVisitante: 'Nueva Zelanda', date: '2026-06-15 19:00:00-06:00' },
+    { partidoId: 16, equipoLocal: 'Bélgica', equipoVisitante: 'Egipto', date: '2026-06-15 13:00:00-06:00' },
+    { partidoId: 17, equipoLocal: 'Francia', equipoVisitante: 'Senegal', date: '2026-06-16 13:00:00-06:00' },
+    { partidoId: 18, equipoLocal: 'Irak', equipoVisitante: 'Noruega', date: '2026-06-16 16:00:00-06:00' },
+    { partidoId: 19, equipoLocal: 'Argentina', equipoVisitante: 'Argelia', date: '2026-06-16 19:00:00-06:00' },
+    { partidoId: 20, equipoLocal: 'Austria', equipoVisitante: 'Jordania', date: '2026-06-16 22:00:00-06:00' },
+    { partidoId: 21, equipoLocal: 'Ghana', equipoVisitante: 'Panamá', date: '2026-06-17 17:00:00-06:00' },
+    { partidoId: 22, equipoLocal: 'Inglaterra', equipoVisitante: 'Croacia', date: '2026-06-17 14:00:00-06:00' },
+    { partidoId: 23, equipoLocal: 'Portugal', equipoVisitante: 'RD Congo', date: '2026-06-17 11:00:00-06:00' },
+    { partidoId: 24, equipoLocal: 'Uzbekistán', equipoVisitante: 'Colombia', date: '2026-06-17 20:00:00-06:00' },
+    { partidoId: 25, equipoLocal: 'República Checa', equipoVisitante: 'Sudáfrica', date: '2026-06-18 10:00:00-06:00' },
+    { partidoId: 26, equipoLocal: 'Suiza', equipoVisitante: 'Bosnia y Herzegovina', date: '2026-06-18 13:00:00-06:00' },
+    { partidoId: 27, equipoLocal: 'Canadá', equipoVisitante: 'Catar', date: '2026-06-18 16:00:00-06:00' },
+    { partidoId: 28, equipoLocal: 'México', equipoVisitante: 'Corea del Sur', date: '2026-06-18 19:00:00-06:00' },
+    { partidoId: 29, equipoLocal: 'Brasil', equipoVisitante: 'Haití', date: '2026-06-19 18:30:00-06:00' },
+    { partidoId: 30, equipoLocal: 'Escocia', equipoVisitante: 'Marruecos', date: '2026-06-19 16:00:00-06:00' },
+    { partidoId: 31, equipoLocal: 'Turquía', equipoVisitante: 'Paraguay', date: '2026-06-19 21:00:00-06:00' },
+    { partidoId: 32, equipoLocal: 'Estados Unidos', equipoVisitante: 'Australia', date: '2026-06-19 13:00:00-06:00' },
+    { partidoId: 33, equipoLocal: 'Alemania', equipoVisitante: 'Costa de Marfil', date: '2026-06-20 14:00:00-06:00' },
+    { partidoId: 34, equipoLocal: 'Ecuador', equipoVisitante: 'Curazao', date: '2026-06-20 18:00:00-06:00' },
+    { partidoId: 35, equipoLocal: 'Países Bajos', equipoVisitante: 'Suecia', date: '2026-06-20 11:00:00-06:00' },
+    { partidoId: 36, equipoLocal: 'Túnez', equipoVisitante: 'Japón', date: '2026-06-20 22:00:00-06:00' },
+    { partidoId: 37, equipoLocal: 'Uruguay', equipoVisitante: 'Cabo Verde', date: '2026-06-21 16:00:00-06:00' },
+    { partidoId: 38, equipoLocal: 'España', equipoVisitante: 'Arabia Saudita', date: '2026-06-21 10:00:00-06:00' },
+    { partidoId: 39, equipoLocal: 'Bélgica', equipoVisitante: 'Irán', date: '2026-06-21 13:00:00-06:00' },
+    { partidoId: 40, equipoLocal: 'Nueva Zelanda', equipoVisitante: 'Egipto', date: '2026-06-21 19:00:00-06:00' },
+    { partidoId: 41, equipoLocal: 'Noruega', equipoVisitante: 'Senegal', date: '2026-06-22 18:00:00-06:00' },
+    { partidoId: 42, equipoLocal: 'Francia', equipoVisitante: 'Irak', date: '2026-06-22 15:00:00-06:00' },
+    { partidoId: 43, equipoLocal: 'Argentina', equipoVisitante: 'Austria', date: '2026-06-22 11:00:00-06:00' },
+    { partidoId: 44, equipoLocal: 'Jordania', equipoVisitante: 'Argelia', date: '2026-06-22 21:00:00-06:00' },
+    { partidoId: 45, equipoLocal: 'Inglaterra', equipoVisitante: 'Ghana', date: '2026-06-23 14:00:00-06:00' },
+    { partidoId: 46, equipoLocal: 'Panamá', equipoVisitante: 'Croacia', date: '2026-06-23 17:00:00-06:00' },
+    { partidoId: 47, equipoLocal: 'Portugal', equipoVisitante: 'Uzbekistán', date: '2026-06-23 11:00:00-06:00' },
+    { partidoId: 48, equipoLocal: 'Colombia', equipoVisitante: 'RD Congo', date: '2026-06-23 20:00:00-06:00' },
+    { partidoId: 49, equipoLocal: 'Escocia', equipoVisitante: 'Brasil', date: '2026-06-24 16:00:00-06:00' },
+    { partidoId: 50, equipoLocal: 'Marruecos', equipoVisitante: 'Haití', date: '2026-06-24 16:00:00-06:00' },
+    { partidoId: 51, equipoLocal: 'Suiza', equipoVisitante: 'Canadá', date: '2026-06-24 13:00:00-06:00' },
+    { partidoId: 52, equipoLocal: 'Bosnia y Herzegovina', equipoVisitante: 'Catar', date: '2026-06-24 13:00:00-06:00' },
+    { partidoId: 53, equipoLocal: 'República Checa', equipoVisitante: 'México', date: '2026-06-24 19:00:00-06:00' },
+    { partidoId: 54, equipoLocal: 'Sudáfrica', equipoVisitante: 'Corea del Sur', date: '2026-06-24 19:00:00-06:00' },
+    { partidoId: 55, equipoLocal: 'Curazao', equipoVisitante: 'Costa de Marfil', date: '2026-06-25 14:00:00-06:00' },
+    { partidoId: 56, equipoLocal: 'Ecuador', equipoVisitante: 'Alemania', date: '2026-06-25 14:00:00-06:00' },
+    { partidoId: 57, equipoLocal: 'Japón', equipoVisitante: 'Suecia', date: '2026-06-25 17:00:00-06:00' },
+    { partidoId: 58, equipoLocal: 'Túnez', equipoVisitante: 'Países Bajos', date: '2026-06-25 17:00:00-06:00' },
+    { partidoId: 59, equipoLocal: 'Turquía', equipoVisitante: 'Estados Unidos', date: '2026-06-25 20:00:00-06:00' },
+    { partidoId: 60, equipoLocal: 'Paraguay', equipoVisitante: 'Australia', date: '2026-06-25 20:00:00-06:00' },
+    { partidoId: 61, equipoLocal: 'Noruega', equipoVisitante: 'Francia', date: '2026-06-26 13:00:00-06:00' },
+    { partidoId: 62, equipoLocal: 'Senegal', equipoVisitante: 'Irak', date: '2026-06-26 13:00:00-06:00' },
+    { partidoId: 63, equipoLocal: 'Egipto', equipoVisitante: 'Irán', date: '2026-06-26 21:00:00-06:00' },
+    { partidoId: 64, equipoLocal: 'Nueva Zelanda', equipoVisitante: 'Bélgica', date: '2026-06-26 21:00:00-06:00' },
+    { partidoId: 65, equipoLocal: 'Cabo Verde', equipoVisitante: 'Arabia Saudita', date: '2026-06-26 18:00:00-06:00' },
+    { partidoId: 66, equipoLocal: 'Uruguay', equipoVisitante: 'España', date: '2026-06-26 18:00:00-06:00' },
+    { partidoId: 67, equipoLocal: 'Panamá', equipoVisitante: 'Inglaterra', date: '2026-06-27 15:00:00-06:00' },
+    { partidoId: 68, equipoLocal: 'Croacia', equipoVisitante: 'Ghana', date: '2026-06-27 15:00:00-06:00' },
+    { partidoId: 69, equipoLocal: 'Argelia', equipoVisitante: 'Austria', date: '2026-06-27 20:00:00-06:00' },
+    { partidoId: 70, equipoLocal: 'Jordania', equipoVisitante: 'Argentina', date: '2026-06-27 20:00:00-06:00' },
+    { partidoId: 71, equipoLocal: 'Colombia', equipoVisitante: 'Portugal', date: '2026-06-27 17:30:00-06:00' },
+    { partidoId: 72, equipoLocal: 'RD Congo', equipoVisitante: 'Uzbekistán', date: '2026-06-27 17:30:00-06:00' },
+    { partidoId: 73, equipoLocal: '2A', equipoVisitante: '2B', date: '2026-06-28 13:00:00-06:00' },
+    { partidoId: 74, equipoLocal: '1E', equipoVisitante: '3ABCDF', date: '2026-06-29 14:30:00-06:00' },
+    { partidoId: 75, equipoLocal: '1F', equipoVisitante: '2C', date: '2026-06-29 19:00:00-06:00' },
+    { partidoId: 76, equipoLocal: '1C', equipoVisitante: '2F', date: '2026-06-29 11:00:00-06:00' },
+    { partidoId: 77, equipoLocal: '1I', equipoVisitante: '3CDFGH', date: '2026-06-30 15:00:00-06:00' },
+    { partidoId: 78, equipoLocal: '2E', equipoVisitante: '2I', date: '2026-06-30 11:00:00-06:00' },
+    { partidoId: 79, equipoLocal: '1A', equipoVisitante: '3CEFHI', date: '2026-06-30 19:00:00-06:00' },
+    { partidoId: 80, equipoLocal: '1L', equipoVisitante: '3EHIJK', date: '2026-07-01 10:00:00-06:00' },
+    { partidoId: 81, equipoLocal: '1D', equipoVisitante: '3BEFIJ', date: '2026-07-01 18:00:00-06:00' },
+    { partidoId: 82, equipoLocal: '1G', equipoVisitante: '3AEHIJ', date: '2026-07-01 14:00:00-06:00' },
+    { partidoId: 83, equipoLocal: '2K', equipoVisitante: '2L', date: '2026-07-02 17:00:00-06:00' },
+    { partidoId: 84, equipoLocal: '1H', equipoVisitante: '2J', date: '2026-07-02 13:00:00-06:00' },
+    { partidoId: 85, equipoLocal: '1B', equipoVisitante: '3EFGIJ', date: '2026-07-02 21:00:00-06:00' },
+    { partidoId: 86, equipoLocal: '1J', equipoVisitante: '2H', date: '2026-07-03 16:00:00-06:00' },
+    { partidoId: 87, equipoLocal: '1K', equipoVisitante: '3DEIJL', date: '2026-07-03 19:30:00-06:00' },
+    { partidoId: 88, equipoLocal: '2D', equipoVisitante: '2G', date: '2026-07-03 12:00:00-06:00' },
+    { partidoId: 89, equipoLocal: 'W74', equipoVisitante: 'W77', date: '2026-07-04 15:00:00-06:00' },
+    { partidoId: 90, equipoLocal: 'W73', equipoVisitante: 'W75', date: '2026-07-04 11:00:00-06:00' },
+    { partidoId: 91, equipoLocal: 'W76', equipoVisitante: 'W78', date: '2026-07-05 14:00:00-06:00' },
+    { partidoId: 92, equipoLocal: 'W79', equipoVisitante: 'W80', date: '2026-07-05 18:00:00-06:00' },
+    { partidoId: 93, equipoLocal: 'W83', equipoVisitante: 'W84', date: '2026-07-06 13:00:00-06:00' },
+    { partidoId: 94, equipoLocal: 'W81', equipoVisitante: 'W82', date: '2026-07-06 18:00:00-06:00' },
+    { partidoId: 95, equipoLocal: 'W86', equipoVisitante: 'W88', date: '2026-07-07 10:00:00-06:00' },
+    { partidoId: 96, equipoLocal: 'W85', equipoVisitante: 'W87', date: '2026-07-07 14:00:00-06:00' },
+    { partidoId: 97, equipoLocal: 'W89', equipoVisitante: 'W90', date: '2026-07-09 14:00:00-06:00' },
+    { partidoId: 98, equipoLocal: 'W93', equipoVisitante: 'W94', date: '2026-07-10 13:00:00-06:00' },
+    { partidoId: 99, equipoLocal: 'W91', equipoVisitante: 'W92', date: '2026-07-11 15:00:00-06:00' },
+    { partidoId: 100, equipoLocal: 'W95', equipoVisitante: 'W96', date: '2026-07-11 19:00:00-06:00' },
+    { partidoId: 101, equipoLocal: 'W97', equipoVisitante: 'W98', date: '2026-07-14 13:00:00-06:00' },
+    { partidoId: 102, equipoLocal: 'W99', equipoVisitante: 'W100', date: '2026-07-15 13:00:00-06:00' },
+    { partidoId: 103, equipoLocal: 'L101', equipoVisitante: 'L102', date: '2026-07-18 15:00:00-06:00' },
+    { partidoId: 104, equipoLocal: 'W101', equipoVisitante: 'W102', date: '2026-07-19 13:00:00-06:00' }
+  ];
 
   const sheet = SpreadsheetApp.getActive().getSheetByName('ResultadosReales');
-  if(sheet.getLastRow() > 1) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).clearContent();
-  }
-
-  const lines = rawText.trim().split('\\n');
-  let partidoId = 1;
-
-  lines.forEach(line => {
-    if(!line.includes('[')) return;
-    const dateMatch = line.match(/\\[(.*?)\\]/);
-    if(!dateMatch) return;
-    // Agregamos -06:00 asumiendo hora central de México por los horarios
-    const dateStr = dateMatch[1].replace(' ', 'T') + '-06:00';
-    
-    const parts = line.split(': ');
-    if(parts.length < 2) return;
-    const teams = parts[1].trim().split(' vs ');
-    const home = teams[0].trim();
-    const away = teams[1] ? teams[1].trim() : 'Por Definir';
-    
-    sheet.appendRow([partidoId++, home, away, "", "", "SCHEDULED", "NO", dateStr]);
+  const lastRow = sheet.getLastRow();
+  
+  // Obtener los datos existentes en la hoja para no sobreescribir marcadores ya guardados
+  const existingData = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 8).getValues() : [];
+  const existingMap = {};
+  existingData.forEach((row, index) => {
+    const id = parseInt(row[0]);
+    if (!isNaN(id)) {
+      existingMap[id] = {
+        rowNum: index + 2, // 1-indexed y saltar la cabecera
+        local: row[1],
+        visitante: row[2],
+        golesL: row[3],
+        golesV: row[4],
+        status: row[5],
+        procesado: row[6],
+        fecha: row[7]
+      };
+    }
   });
+
+  matches.forEach(m => {
+    const matchId = m.partidoId;
+    const home = m.equipoLocal;
+    const away = m.equipoVisitante;
+    const dateStr = m.date;
+
+    if (existingMap[matchId]) {
+      // El partido ya existe, actualizamos equipos y fecha, manteniendo goles y estado si ya fueron procesados
+      const ext = existingMap[matchId];
+      const rNum = ext.rowNum;
+      
+      sheet.getRange(rNum, 2).setValue(home);
+      sheet.getRange(rNum, 3).setValue(away);
+      sheet.getRange(rNum, 8).setValue(dateStr);
+      
+      // Aseguramos valores por defecto si estaban vacíos
+      if (ext.status === "") {
+        sheet.getRange(rNum, 6).setValue("SCHEDULED");
+      }
+      if (ext.procesado === "") {
+        sheet.getRange(rNum, 7).setValue("NO");
+      }
+    } else {
+      // El partido no existe, se añade la fila nueva
+      sheet.appendRow([matchId, home, away, "", "", "SCHEDULED", "NO", dateStr]);
+    }
+  });
+}
+
+// ================= MENÚ MANUAL PARA GOOGLE SHEETS =================
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('⚽ Quiniela Mundial')
+      .addItem('Recalcular Todos Los Puntos', 'menuRecalcular')
+      .addToUi();
+}
+
+function menuRecalcular() {
+  recalcularTodosLosPuntos();
+  SpreadsheetApp.getUi().alert('Éxito', 'Los puntos de los usuarios han sido sumados y actualizados correctamente según los resultados actuales de la hoja ResultadosReales. Ya no hay riesgo de puntos perdidos o duplicados.', SpreadsheetApp.getUi().ButtonSet.OK);
 }

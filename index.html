@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="./styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body data-theme="light">
 
@@ -133,7 +134,7 @@
     <!-- Main Content View -->
     <section id="main-view" class="view">
       <header class="app-header">
-        <h2>Mundial 2026</h2>
+        <h2 style="display:flex; align-items:center;">Mundial 2026 <span id="display-rank" style="font-size:0.85rem; color:black; padding:2px 8px; border-radius:12px; display:none; margin-left:10px; font-weight:800; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span></h2>
         <div class="user-info">
           <span id="display-user">Usuario</span>
           <span class="pts-badge" id="display-pts">0 pts</span>
@@ -264,7 +265,7 @@
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-green" style="width: 25px;"></i> <b>Acierto Exacto (2 Puntos):</b> Adivinar el marcador exacto del partido.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-yellow" style="width: 25px;"></i> <b>Acierto Resultado (1 Punto):</b> Acertar qué equipo gana o si hay empate, sin atinarle al marcador.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-xmark text-red" style="width: 25px;"></i> <b>Fallo (0 Puntos):</b> No acertar el ganador ni el empate.</li>
-            <li style="margin-bottom: 15px;"><i class="fa-solid fa-clock text-primary" style="width: 25px;"></i> <b>Cierre:</b> Puedes enviar o modificar tus pronósticos hasta las 12:00 AM (medianoche) del día en que se juegue el partido.</li>
+            <li style="margin-bottom: 15px;"><i class="fa-solid fa-clock text-primary" style="width: 25px;"></i> <b>Cierre:</b> Solo puedes enviar pronósticos hasta 1 día (24 horas) antes del inicio del partido.</li>
           </ul>
         </div>
       </div>
