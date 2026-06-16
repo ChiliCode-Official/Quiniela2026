@@ -110,7 +110,7 @@ function updateAlertsBanner() {
     if (!hasPrediction && (match.status === 'SCHEDULED' || match.status === 'TIMED')) {
       const matchDate = match.date ? safeNewDate(match.date) : null;
       if (matchDate) {
-        const lockTime = new Date(matchDate.getTime() - oneDayMs);
+        const lockTime = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0);
         const diff = lockTime - now;
         
         if (diff > 0) {
@@ -170,7 +170,7 @@ function checkAndSendNotifications() {
     if (!hasPrediction && (match.status === 'SCHEDULED' || match.status === 'TIMED')) {
       const matchDate = match.date ? safeNewDate(match.date) : null;
       if (matchDate) {
-        const lockTime = new Date(matchDate.getTime() - oneDayMs);
+        const lockTime = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0);
         const diff = lockTime - now;
         
         if (diff > 0) {
@@ -271,7 +271,7 @@ if (isStandalone) {
     }
     
     // Add logic for both options inside the modal
-    const btnInstallPwa = document.getElementById('btn-install-pwa');
+    const btnInstallPwa = document.getElementById('btn-install-pwa-modal');
     if (btnInstallPwa) {
       btnInstallPwa.addEventListener('click', async () => {
         if (deferredPrompt) {
@@ -811,7 +811,7 @@ function renderQuiniela() {
     }
     
     const matchDate = match.date ? safeNewDate(match.date) : null;
-    const lockTime = matchDate ? new Date(matchDate.getTime() - oneDayMs) : null;
+    const lockTime = matchDate ? new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0) : null;
     const isLocked = lockTime && now >= lockTime;
     
     const localCode = flagMap[match.equipoLocal] || 'un';

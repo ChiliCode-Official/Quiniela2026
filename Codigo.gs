@@ -88,10 +88,10 @@ function doGet(e) {
       if (matchDateStr) {
         const matchDate = safeNewDate(matchDateStr);
         const now = new Date();
-        const lockTime = new Date(matchDate.getTime() - 24 * 60 * 60 * 1000); // 24 horas antes
+        const lockTime = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0);
         
         if (status === 'FINISHED' || status === 'IN_PLAY' || now >= lockTime) {
-           return jsonResponse({ success: false, message: 'El tiempo límite para enviar este pronóstico ha expirado (24h antes)' });
+           return jsonResponse({ success: false, message: 'El tiempo límite para enviar este pronóstico ha expirado (Cierra a media noche)' });
         }
       }
     }

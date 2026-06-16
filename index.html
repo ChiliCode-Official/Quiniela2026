@@ -274,10 +274,10 @@
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-green" style="width: 25px;"></i> <b>Acierto Exacto (2 Puntos):</b> Adivinar el marcador exacto del partido.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-yellow" style="width: 25px;"></i> <b>Acierto Resultado (1 Punto):</b> Acertar qué equipo gana o si hay empate, sin atinarle al marcador.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-xmark text-red" style="width: 25px;"></i> <b>Fallo (0 Puntos):</b> No acertar el ganador ni el empate.</li>
-            <li style="margin-bottom: 15px;"><i class="fa-solid fa-clock text-primary" style="width: 25px;"></i> <b>Cierre:</b> Solo puedes enviar pronósticos hasta 1 día (24 horas) antes del inicio del partido.</li>
+            <li style="margin-bottom: 15px;"><i class="fa-solid fa-clock text-primary" style="width: 25px;"></i> <b>Cierre:</b> Tienes hasta las 11:59 PM de un día antes del partido para enviar tus resultados. Se bloquean en la madrugada del día de juego.</li>
           </ul>
           
-          <button id="btn-tutorial-reglas" class="btn-primary" style="width: 100%; margin-top: 20px;">
+          <button id="btn-tutorial-reglas" class="btn primary-btn" style="width: 100%; margin-top: 20px;">
             <i class="fa-solid fa-person-chalkboard"></i> Ver Tutorial de la App
           </button>
         </div>
@@ -343,15 +343,15 @@
         </div>
 
         <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 15px;">
-          <button id="btn-share-profile" class="btn-primary" style="background-color: var(--secondary); color: white;">
+          <button id="btn-share-profile" class="btn primary-btn" style="background-color: var(--secondary); color: white;">
             <i class="fa-solid fa-share-nodes"></i> Compartir mi Podio
           </button>
           
-          <button id="btn-tutorial-perfil" class="btn-primary" style="background-color: var(--surface-variant); color: var(--text-main);">
+          <button id="btn-tutorial-perfil" class="btn primary-btn" style="background-color: var(--surface-variant); color: var(--text-main);">
             <i class="fa-solid fa-person-chalkboard"></i> Ver Tutorial
           </button>
 
-          <button id="btn-logout" class="btn-primary" style="background-color: var(--danger); color: white;">
+          <button id="btn-logout" class="btn primary-btn" style="background-color: var(--danger); color: white;">
             <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
           </button>
         </div>
@@ -406,7 +406,7 @@
       <div id="tutorial-slide-1" class="tutorial-slide">
         <i class="fa-solid fa-pen-to-square fa-3x text-primary" style="margin: 20px 0;"></i>
         <h3>Paso 1: Pronostica</h3>
-        <p style="color: var(--text-muted); margin-top: 10px;">Ingresa tus resultados en la pestaña <b>Quiniela</b>. Asegúrate de hacerlo 24 horas antes del partido.</p>
+        <p style="color: var(--text-muted); margin-top: 10px;">Ingresa tus resultados en la pestaña <b>Quiniela</b>. Asegúrate de hacerlo antes del día del partido (se bloquean a media noche).</p>
       </div>
 
       <div id="tutorial-slide-2" class="tutorial-slide hide">
@@ -422,8 +422,8 @@
       </div>
 
       <div style="display: flex; gap: 10px; margin-top: 25px;">
-        <button id="btn-tutorial-next" class="btn-primary" style="flex: 1;">Siguiente</button>
-        <button id="btn-tutorial-close" class="btn-primary hide" style="flex: 1; background: var(--success);">¡Empezar!</button>
+        <button id="btn-tutorial-next" class="btn primary-btn" style="flex: 1;">Siguiente</button>
+        <button id="btn-tutorial-close" class="btn primary-btn hide" style="flex: 1; background: var(--success);">¡Empezar!</button>
       </div>
     </div>
   </div>
@@ -435,10 +435,10 @@
       <p style="font-size: 1.1rem; color: var(--text-main); font-weight: 600;">¡Has sumado puntos en los últimos 3 partidos seguidos!</p>
       <p style="color: var(--text-muted); margin-top: 10px; font-size: 0.9rem;">Sigue así para dominar el Podio de la Notaría 134.</p>
       
-      <button id="btn-share-streak" class="btn-primary" style="width: 100%; margin-top: 25px; background: #ff9800;">
+      <button id="btn-share-streak" class="btn primary-btn" style="width: 100%; margin-top: 25px; background: #ff9800; border: none; font-weight: bold;">
         <i class="fa-brands fa-whatsapp"></i> Presumir Racha
       </button>
-      <button id="btn-close-streak" style="background: none; border: none; color: var(--text-muted); margin-top: 15px; cursor: pointer; text-decoration: underline;">
+      <button id="btn-close-streak" class="btn" style="background: var(--surface-variant); border: none; color: var(--text-main); margin-top: 15px; width: 100%;">
         Continuar
       </button>
     </div>
@@ -449,7 +449,7 @@
       <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fa-solid fa-download"></i> Instalar App</h2>
       <p style="color: var(--text-muted); margin-bottom: 20px;">Lleva la Quiniela siempre contigo.</p>
       
-      <button id="btn-install-pwa" class="btn-primary" style="width: 100%; margin-bottom: 20px;">
+      <button id="btn-install-pwa-modal" class="btn primary-btn" style="width: 100%; margin-bottom: 20px;">
         <i class="fa-solid fa-desktop"></i> Instalar en este dispositivo
       </button>
       
@@ -458,7 +458,7 @@
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://chilicode-official.github.io/Quiniela2026/" alt="QR Code" style="width: 180px; height: 180px; border-radius: 12px; box-shadow: var(--shadow);">
       </div>
 
-      <button id="btn-close-install-modal" style="background: none; border: none; color: var(--text-muted); margin-top: 25px; cursor: pointer; text-decoration: underline;">
+      <button id="btn-close-install-modal" class="btn" style="background: var(--surface-variant); border: none; color: var(--text-main); margin-top: 25px; width: 100%;">
         Cancelar
       </button>
     </div>
