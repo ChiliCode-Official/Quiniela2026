@@ -756,30 +756,8 @@ window.savePrediction = async function(partidoId, btn) {
 
 async function loadPodio() {
   const container = document.getElementById('podio-list');
-  const userEmail = (localStorage.getItem('quiniela_email') || '').toLowerCase().trim();
   
-  // VERIFICACIÓN: ¿Es Administrador?
-  const isAdmin = (userEmail === 'sistemas@notaria134.com.mx' || userEmail === 'omarlozano@notaria134.com.mx');
-
-  if (!isAdmin) {
-    // Si NO es administrador, mostramos el QR y el mensaje del blog
-    container.innerHTML = `
-      <div style="text-align:center; padding: 20px;">
-        <p style="margin-bottom: 20px; font-weight: 600; color: var(--text-main);">
-          Aquí pueden ver sus resultados oficiales iniciando sesión con su usuario del blog oficial de la notaría.
-        </p>
-        <a href="https://notaria134cdmx.buk.mx/" target="_blank" style="text-decoration:none;">
-          <img src="https://i.imgur.com/BhUqkNB.png" alt="QR Blog" style="width: 100%; max-width: 250px; border-radius: var(--radius-md); box-shadow: var(--shadow); border: 2px solid var(--primary);">
-          <p style="margin-top: 15px; color: var(--primary); font-weight: 800;">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i> IR AL BLOG OFICIAL
-          </p>
-        </a>
-      </div>
-    `;
-    return;
-  }
-
-  // Si ES administrador, cargamos los datos reales del servidor
+  // Cargamos los datos reales del servidor para todos los usuarios
   container.innerHTML = '<div style="text-align:center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin fa-2x text-muted"></i></div>';
   
   try {
@@ -793,8 +771,8 @@ async function loadPodio() {
         return;
       }
       
-      // Solo mostramos los primeros 10 lugares para el administrador
-      const top10 = data.podio.slice(0, 10);
+      // Solo mostramos los primeros 15 lugares para el administrador
+      const top10 = data.podio.slice(0, 15);
       
       top10.forEach((user, index) => {
         const topClass = index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : '';
