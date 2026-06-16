@@ -200,8 +200,8 @@
         </div>
 
         <div id="quiniela-list" class="cards-container">
-          <div style="text-align:center; padding: 40px; color: var(--text-muted);">
-            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+          <div style="text-align:center; padding: 40px; color: var(--primary);">
+            <i class="fa-solid fa-futbol fa-bounce fa-3x"></i>
           </div>
         </div>
       </div>
@@ -276,6 +276,10 @@
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-xmark text-red" style="width: 25px;"></i> <b>Fallo (0 Puntos):</b> No acertar el ganador ni el empate.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-clock text-primary" style="width: 25px;"></i> <b>Cierre:</b> Solo puedes enviar pronósticos hasta 1 día (24 horas) antes del inicio del partido.</li>
           </ul>
+          
+          <button id="btn-tutorial-reglas" class="btn-primary" style="width: 100%; margin-top: 20px;">
+            <i class="fa-solid fa-person-chalkboard"></i> Ver Tutorial de la App
+          </button>
         </div>
       </div>
       
@@ -338,8 +342,16 @@
           </div>
         </div>
 
-        <div style="margin-top: 30px; text-align: center;">
-          <button id="btn-logout" class="btn secondary-btn" style="width: 100%; border-color: var(--danger); color: var(--danger);">
+        <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 15px;">
+          <button id="btn-share-profile" class="btn-primary" style="background-color: var(--secondary); color: white;">
+            <i class="fa-solid fa-share-nodes"></i> Compartir mi Podio
+          </button>
+          
+          <button id="btn-tutorial-perfil" class="btn-primary" style="background-color: var(--surface-variant); color: var(--text-main);">
+            <i class="fa-solid fa-person-chalkboard"></i> Ver Tutorial
+          </button>
+
+          <button id="btn-logout" class="btn-primary" style="background-color: var(--danger); color: white;">
             <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
           </button>
         </div>
@@ -384,6 +396,73 @@
       <span>Perfil</span>
     </button>
   </nav>
+
+
+  <!-- Modals -->
+  <div id="tutorial-modal" class="modal-overlay hide">
+    <div class="modal-content" style="text-align: center; max-width: 350px;">
+      <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fa-solid fa-person-chalkboard"></i> Tutorial</h2>
+      
+      <div id="tutorial-slide-1" class="tutorial-slide">
+        <i class="fa-solid fa-pen-to-square fa-3x text-primary" style="margin: 20px 0;"></i>
+        <h3>Paso 1: Pronostica</h3>
+        <p style="color: var(--text-muted); margin-top: 10px;">Ingresa tus resultados en la pestaña <b>Quiniela</b>. Asegúrate de hacerlo 24 horas antes del partido.</p>
+      </div>
+
+      <div id="tutorial-slide-2" class="tutorial-slide hide">
+        <i class="fa-solid fa-floppy-disk fa-3x text-primary" style="margin: 20px 0;"></i>
+        <h3>Paso 2: Autoguardado</h3>
+        <p style="color: var(--text-muted); margin-top: 10px;">¡No necesitas presionar guardar! Tus resultados se guardan automáticamente al escribirlos (se marcan en verde).</p>
+      </div>
+
+      <div id="tutorial-slide-3" class="tutorial-slide hide">
+        <i class="fa-solid fa-medal fa-3x text-primary" style="margin: 20px 0;"></i>
+        <h3>Paso 3: Podio y Rachas</h3>
+        <p style="color: var(--text-muted); margin-top: 10px;">Revisa la pestaña <b>Podio</b> para ver tu lugar. ¡Acertar 3 partidos seguidos encenderá tu racha de fuego! 🔥</p>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 25px;">
+        <button id="btn-tutorial-next" class="btn-primary" style="flex: 1;">Siguiente</button>
+        <button id="btn-tutorial-close" class="btn-primary hide" style="flex: 1; background: var(--success);">¡Empezar!</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="streak-modal" class="modal-overlay hide">
+    <div class="modal-content" style="text-align: center; max-width: 320px; border: 2px solid #ff9800; animation: slideUpSpring 0.5s ease forwards;">
+      <h2 style="color: #ff9800; font-size: 2rem; margin-bottom: 10px;">¡Racha Activa!</h2>
+      <i class="fa-solid fa-fire fa-beat" style="color: #ff9800; font-size: 5rem; margin: 20px 0; text-shadow: 0 0 20px rgba(255, 152, 0, 0.5);"></i>
+      <p style="font-size: 1.1rem; color: var(--text-main); font-weight: 600;">¡Has sumado puntos en los últimos 3 partidos seguidos!</p>
+      <p style="color: var(--text-muted); margin-top: 10px; font-size: 0.9rem;">Sigue así para dominar el Podio de la Notaría 134.</p>
+      
+      <button id="btn-share-streak" class="btn-primary" style="width: 100%; margin-top: 25px; background: #ff9800;">
+        <i class="fa-brands fa-whatsapp"></i> Presumir Racha
+      </button>
+      <button id="btn-close-streak" style="background: none; border: none; color: var(--text-muted); margin-top: 15px; cursor: pointer; text-decoration: underline;">
+        Continuar
+      </button>
+    </div>
+  </div>
+
+  <div id="install-modal" class="modal-overlay hide">
+    <div class="modal-content" style="text-align: center; max-width: 320px;">
+      <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fa-solid fa-download"></i> Instalar App</h2>
+      <p style="color: var(--text-muted); margin-bottom: 20px;">Lleva la Quiniela siempre contigo.</p>
+      
+      <button id="btn-install-pwa" class="btn-primary" style="width: 100%; margin-bottom: 20px;">
+        <i class="fa-solid fa-desktop"></i> Instalar en este dispositivo
+      </button>
+      
+      <div style="border-top: 1px solid var(--border); padding-top: 20px; margin-top: 10px;">
+        <p style="color: var(--text-muted); margin-bottom: 15px; font-size: 0.9rem;">O escanea este código para abrir en tu celular:</p>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://chilicode-official.github.io/Quiniela2026/" alt="QR Code" style="width: 180px; height: 180px; border-radius: 12px; box-shadow: var(--shadow);">
+      </div>
+
+      <button id="btn-close-install-modal" style="background: none; border: none; color: var(--text-muted); margin-top: 25px; cursor: pointer; text-decoration: underline;">
+        Cancelar
+      </button>
+    </div>
+  </div>
 
   <div id="toast" class="toast">Mensaje</div>
 

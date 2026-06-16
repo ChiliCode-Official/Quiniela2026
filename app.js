@@ -266,11 +266,38 @@ if (isStandalone) {
     if (installBtn) {
       installBtn.classList.remove('hide');
       installBtn.addEventListener('click', () => {
-        document.getElementById('qr-modal').classList.remove('hide');
+        document.getElementById('install-modal').classList.remove('hide');
       });
     }
-    document.getElementById('close-qr').addEventListener('click', () => {
-      document.getElementById('qr-modal').classList.add('hide');
+    
+    // Add logic for both options inside the modal
+    const btnInstallPwa = document.getElementById('btn-install-pwa');
+    if (btnInstallPwa) {
+      btnInstallPwa.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            installBtn.classList.add('hide');
+            document.getElementById('install-modal').classList.add('hide');
+          }
+          deferredPrompt = null;
+        } else {
+          showToast('No se puede instalar. Intenta desde tu celular.', 'warning');
+        }
+      });
+    }
+
+    const btnCloseInstall = document.getElementById('btn-close-install-modal');
+    if (btnCloseInstall) {
+      btnCloseInstall.addEventListener('click', () => {
+        document.getElementById('install-modal').classList.add('hide');
+      });
+    }
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
     });
   } else {
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -362,15 +389,15 @@ function applyGenderToAvatars() {
   if (radio) radio.checked = true;
   
   // Update App Primary Color
-  const root = document.documentElement;
+  const target = document.body;
   if (gender === 'female') {
-    root.style.setProperty('--primary', '#ec4899');
+    target.style.setProperty('--primary', '#ec4899');
   } else if (gender === 'other') {
-    root.style.setProperty('--primary', '#8b5cf6');
+    target.style.setProperty('--primary', '#8b5cf6');
   } else {
     // Default blue (male)
     const isDark = document.body.getAttribute('data-theme') === 'dark';
-    root.style.setProperty('--primary', isDark ? '#a8c7fa' : '#0b57d0');
+    target.style.setProperty('--primary', isDark ? '#a8c7fa' : '#0b57d0');
   }
 }
 
@@ -936,7 +963,7 @@ window.savePrediction = async function(partidoId, btn) {
   }
   
   const originalHtml = btn.innerHTML;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+  btn.innerHTML = '<i class="fa-solid fa-futbol fa-bounce"></i> Guardando...';
   btn.disabled = true;
   
   try {
@@ -1183,3 +1210,89 @@ document.getElementById('filter-group-r').addEventListener('change', (e) => {
   groupFilterR = e.target.value;
   renderResultados();
 });
+
+// --- TUTORIAL & ONBOARDING LOGIC ---
+const tutorialModal = document.getElementById('tutorial-modal');
+const slides = document.querySelectorAll('.tutorial-slide');
+let currentSlide = 0;
+
+function showTutorial() {
+  currentSlide = 0;
+  slides.forEach((s, i) => s.classList.toggle('hide', i !== 0));
+  document.getElementById('btn-tutorial-next').classList.remove('hide');
+  document.getElementById('btn-tutorial-close').classList.add('hide');
+  tutorialModal.classList.remove('hide');
+}
+
+if (document.getElementById('btn-tutorial-reglas')) document.getElementById('btn-tutorial-reglas').addEventListener('click', showTutorial);
+if (document.getElementById('btn-tutorial-perfil')) document.getElementById('btn-tutorial-perfil').addEventListener('click', showTutorial);
+
+const btnTutNext = document.getElementById('btn-tutorial-next');
+const btnTutClose = document.getElementById('btn-tutorial-close');
+
+if (btnTutNext) {
+  btnTutNext.addEventListener('click', () => {
+    slides[currentSlide].classList.add('hide');
+    currentSlide++;
+    slides[currentSlide].classList.remove('hide');
+    
+    if (currentSlide === slides.length - 1) {
+      btnTutNext.classList.add('hide');
+      btnTutClose.classList.remove('hide');
+    }
+  });
+}
+
+if (btnTutClose) {
+  btnTutClose.addEventListener('click', () => {
+    tutorialModal.classList.add('hide');
+    localStorage.setItem('quiniela_tutorial_seen', 'true');
+  });
+}
+
+// Auto-show tutorial on first load
+if (!localStorage.getItem('quiniela_tutorial_seen')) {
+  setTimeout(showTutorial, 2000);
+}
+
+// --- WEB SHARE API ---
+function shareApp() {
+  if (navigator.share) {
+    navigator.share({
+      title: 'Quiniela Notaría 134',
+      text: `¡Únete a la Quiniela Mundial de la Notaría 134! Voy con ${currentPoints} puntos. ¿Crees poder ganarme? 🔥`,
+      url: 'https://chilicode-official.github.io/Quiniela2026/'
+    }).catch(console.error);
+  } else {
+    showToast('Tu navegador no soporta compartir directamente.', 'warning');
+  }
+}
+
+if (document.getElementById('btn-share-profile')) document.getElementById('btn-share-profile').addEventListener('click', shareApp);
+if (document.getElementById('btn-share-streak')) document.getElementById('btn-share-streak').addEventListener('click', shareApp);
+
+// --- STREAK (FUEGUITO) LOGIC ---
+function checkStreak() {
+  if (currentPoints > 0 && !sessionStorage.getItem('streak_shown')) {
+    // For prototype logic: if user has points, simulate an active streak!
+    setTimeout(() => {
+      document.getElementById('streak-modal').classList.remove('hide');
+      sessionStorage.setItem('streak_shown', 'true');
+    }, 1500);
+  }
+}
+
+const btnCloseStreak = document.getElementById('btn-close-streak');
+if (btnCloseStreak) {
+  btnCloseStreak.addEventListener('click', () => {
+    document.getElementById('streak-modal').classList.add('hide');
+  });
+}
+
+// Ensure checkStreak is called during initApp
+const originalInitApp = initApp;
+initApp = function() {
+  originalInitApp();
+  checkStreak();
+};
+
