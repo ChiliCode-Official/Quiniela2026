@@ -1158,6 +1158,8 @@ h1, h2, h3 { font-weight: 600; }
   background: var(--surface-variant);
   border-radius: var(--radius-md);
   font-size: 0.95rem;
+}
+
 /* Modals */
 .modal-overlay {
   position: fixed;

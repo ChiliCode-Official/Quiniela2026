@@ -1040,6 +1040,29 @@ async function loadPodio() {
       // Solo mostramos los primeros 15 lugares para el administrador
       const top10 = data.podio.slice(0, 15);
       
+      // Mostrar estadísticas del usuario actual
+      const statsBox = document.getElementById('podio-stats-box');
+      const statsText = document.getElementById('podio-stats-text');
+      
+      if (statsBox && statsText && currentUser && currentPoints > 0) {
+        // Encontrar posición del usuario en TODO el podio
+        const userIndex = data.podio.findIndex(u => u.username === currentUser);
+        if (userIndex !== -1) {
+          const userPos = userIndex + 1;
+          const tiedUsers = data.podio.filter(u => u.puntos === currentPoints).length - 1;
+          
+          let text = `Estás en la posición <b>#${userPos}</b> con <b>${currentPoints} pts</b>.`;
+          if (tiedUsers > 0) {
+            text += `<br>Hay ${tiedUsers} usuario(s) más empatado(s) contigo. ¡Rómpele!`;
+          } else {
+            text += `<br>¡Tienes tu lugar asegurado sin empates por ahora!`;
+          }
+          
+          statsText.innerHTML = text;
+          statsBox.classList.remove('hide');
+        }
+      }
+      
       top10.forEach((user, index) => {
         const topClass = index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : '';
         const icon = index === 0 ? '<i class="fa-solid fa-crown"></i>' : (index + 1);
