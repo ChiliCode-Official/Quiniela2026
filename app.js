@@ -303,7 +303,7 @@ function formatDate(isoString) {
   return d.toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' hrs';
 }
 
-// --- PASSWORD TOGGLE ---
+// --- PASSWORD TOGGLE (LOGIN) ---
 const togglePassword = document.getElementById('toggle-password');
 const passwordInput = document.getElementById('password');
 if (togglePassword && passwordInput) {
@@ -315,8 +315,45 @@ if (togglePassword && passwordInput) {
   });
 }
 
+// --- PASSWORD TOGGLE (PERFIL) ---
+const togglePassPerfil = document.getElementById('profile-toggle-pass');
+const passInputPerfil = document.getElementById('profile-cred-pass');
+if (togglePassPerfil && passInputPerfil) {
+  togglePassPerfil.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isPass = passInputPerfil.getAttribute('type') === 'password';
+    passInputPerfil.setAttribute('type', isPass ? 'text' : 'password');
+    togglePassPerfil.innerHTML = isPass ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
+  });
+}
+
+// --- GENDER & AVATAR LOGIC ---
+const genderRadios = document.querySelectorAll('input[name="gender"]');
+function applyGenderToAvatars() {
+  const gender = localStorage.getItem('quiniela_gender') || 'other';
+  const headerAvatar = document.getElementById('header-avatar');
+  const profileAvatar = document.getElementById('profile-avatar-large');
+  
+  if (headerAvatar) {
+    headerAvatar.className = `user-avatar-btn nav-item-btn avatar-${gender}`;
+  }
+  if (profileAvatar) {
+    profileAvatar.className = `profile-avatar-large avatar-${gender}`;
+  }
+  
+  const radio = document.getElementById(`gender-${gender}`);
+  if (radio) radio.checked = true;
+}
+
+genderRadios.forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    localStorage.setItem('quiniela_gender', e.target.value);
+    applyGenderToAvatars();
+  });
+});
+
 // --- NAVEGACIÓN ---
-const navItems = document.querySelectorAll('.nav-item');
+const navItems = document.querySelectorAll('.nav-item, .nav-item-btn');
 const tabs = document.querySelectorAll('.tab-content');
 
 function handleNavigation(e) {
@@ -503,6 +540,17 @@ async function initApp() {
   document.getElementById('display-user').textContent = currentUser;
   document.getElementById('display-pts').textContent = currentPoints + ' pts';
   
+  const profileUser = document.getElementById('profile-username');
+  if (profileUser) profileUser.textContent = currentUser;
+  
+  const credUser = document.getElementById('profile-cred-user');
+  if (credUser) credUser.textContent = currentUser;
+  
+  const credPass = document.getElementById('profile-cred-pass');
+  if (credPass) credPass.value = localStorage.getItem('quiniela_pass') || '******';
+
+  applyGenderToAvatars();
+  
   // Solicitar permiso de notificaciones
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
@@ -540,6 +588,17 @@ async function loadUserRankAndConfetti() {
           } else {
             displayRank.style.background = 'var(--primary)';
             displayRank.style.color = 'white';
+          }
+        }
+        
+        // Actualizar estadísticas del Perfil
+        const tiedUsers = data.podio.filter(u => u.puntos === currentPoints).length - 1;
+        const rankInfoEl = document.getElementById('profile-rank-info');
+        if (rankInfoEl) {
+          if (tiedUsers > 0) {
+            rankInfoEl.innerHTML = `<i class="fa-solid fa-medal"></i> Rango: #${rank} &nbsp;&bull;&nbsp; <i class="fa-solid fa-people-group"></i> Empatado con ${tiedUsers} usuario(s)`;
+          } else {
+            rankInfoEl.innerHTML = `<i class="fa-solid fa-medal"></i> Rango: #${rank} &nbsp;&bull;&nbsp; ¡Sin empates!`;
           }
         }
       }

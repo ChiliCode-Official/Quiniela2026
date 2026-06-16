@@ -128,8 +128,8 @@
 
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="modal hide" style="flex-direction:column; color:white; font-size:1.2rem; text-align:center;">
-      <i class="fa-solid fa-server fa-bounce fa-3x" style="margin-bottom: 20px; color: var(--primary);"></i>
-      <p>Conectando con los servidores de la Notaría...</p>
+      <i class="fa-solid fa-futbol fa-bounce fa-4x" style="margin-bottom: 20px; color: var(--primary);"></i>
+      <p>Cargando datos del Mundial...</p>
     </div>
 
     <!-- Main Content View -->
@@ -145,7 +145,9 @@
         <div class="user-info">
           <span id="display-user">Usuario</span>
           <span class="pts-badge" id="display-pts">0 pts</span>
-          <button id="btn-logout" style="background:none;border:none;color:var(--on-primary);cursor:pointer;margin-left:5px;font-size:1.1rem;"><i class="fa-solid fa-right-from-bracket"></i></button>
+          <button id="header-avatar" class="user-avatar-btn nav-item-btn" data-target="tab-perfil">
+            <i class="fa-solid fa-user"></i>
+          </button>
         </div>
       </header>
 
@@ -277,6 +279,62 @@
         </div>
       </div>
       
+      <!-- TAB PERFIL (NEW) -->
+      <div class="tab-content hide" id="tab-perfil">
+        <div class="profile-header">
+          <div class="profile-avatar-large" id="profile-avatar-large">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <h3 id="profile-username" style="margin-top: 15px; font-size: 1.5rem; color: var(--text-color);">Usuario</h3>
+          <p id="profile-rank-info" style="color: var(--primary); font-weight: 600; margin-top: 5px;">Cargando rango...</p>
+        </div>
+
+        <div class="m-card" style="margin-top: 20px;">
+          <h4 style="margin-bottom: 15px; color: var(--text-color); border-bottom: 1px solid var(--border); padding-bottom: 8px;">Personaliza tu Avatar</h4>
+          <div class="gender-selection">
+            <label class="gender-radio">
+              <input type="radio" name="gender" value="male" id="gender-male">
+              <div class="gender-box male-box">
+                <i class="fa-solid fa-mars"></i> Hombre
+              </div>
+            </label>
+            <label class="gender-radio">
+              <input type="radio" name="gender" value="female" id="gender-female">
+              <div class="gender-box female-box">
+                <i class="fa-solid fa-venus"></i> Mujer
+              </div>
+            </label>
+            <label class="gender-radio">
+              <input type="radio" name="gender" value="other" id="gender-other">
+              <div class="gender-box other-box">
+                <i class="fa-solid fa-user-astronaut"></i> Otro
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="m-card" style="margin-top: 20px;">
+          <h4 style="margin-bottom: 15px; color: var(--text-color); border-bottom: 1px solid var(--border); padding-bottom: 8px;">Credenciales Locales</h4>
+          <div class="profile-credential">
+            <span><strong>Usuario:</strong></span>
+            <span id="profile-cred-user" style="color: var(--text-muted);">---</span>
+          </div>
+          <div class="profile-credential" style="margin-top: 15px; position: relative;">
+            <span><strong>Contraseña:</strong></span>
+            <input type="password" id="profile-cred-pass" value="" readonly style="background: transparent; border: none; font-size: 1rem; color: var(--text-muted); outline: none; margin-left: 10px; width: 100px;">
+            <button id="profile-toggle-pass" style="background: none; border: none; color: var(--primary); cursor: pointer; font-size: 1.1rem; position: absolute; right: 0;">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center;">
+          <button id="btn-logout" class="btn secondary-btn" style="width: 100%; border-color: var(--danger); color: var(--danger);">
+            <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+          </button>
+        </div>
+      </div>
+      
       <!-- Branding Permanente en la App -->
       <div class="branding-footer app-branding">
         <a href="https://chilicode-official.github.io/ChiliCode/" target="_blank">
@@ -310,6 +368,10 @@
     <button class="nav-item" data-target="tab-reglas">
       <i class="fa-solid fa-book"></i>
       <span>Reglas</span>
+    </button>
+    <button class="nav-item" data-target="tab-perfil">
+      <i class="fa-solid fa-user"></i>
+      <span>Perfil</span>
     </button>
   </nav>
 

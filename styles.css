@@ -1023,7 +1023,116 @@ h1, h2, h3 { font-weight: 600; }
   margin-bottom: 15px;
   animation: floatIcon 3s ease-in-out infinite;
 }
+}
 @keyframes floatIcon {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
+}
+
+/* User Avatar & Profile */
+.user-avatar-btn {
+  background: var(--surface-variant);
+  border: none;
+  color: var(--text-main);
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-left: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+}
+.user-avatar-btn:active { transform: scale(0.9); }
+
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+.profile-avatar-large {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--surface-variant);
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  box-shadow: var(--shadow);
+  border: 4px solid var(--surface);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Gender Selection Boxes */
+.gender-selection {
+  display: flex;
+  justify-content: space-around;
+  gap: 10px;
+  margin-top: 10px;
+}
+.gender-radio {
+  flex: 1;
+  position: relative;
+  cursor: pointer;
+}
+.gender-radio input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+.gender-box {
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 15px 5px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.gender-box i { font-size: 1.5rem; }
+
+/* Gender Checked States */
+.gender-radio input:checked ~ .male-box {
+  border-color: #3b82f6; /* Blue */
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+.gender-radio input:checked ~ .female-box {
+  border-color: #ec4899; /* Pink */
+  background: rgba(236, 72, 153, 0.1);
+  color: #ec4899;
+}
+.gender-radio input:checked ~ .other-box {
+  border-color: #8b5cf6; /* Purple */
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+}
+
+/* Avatar Colors based on gender */
+.avatar-male { background: #3b82f6 !important; color: white !important; }
+.avatar-female { background: #ec4899 !important; color: white !important; }
+.avatar-other { background: #8b5cf6 !important; color: white !important; }
+
+/* Profile Credentials */
+.profile-credential {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  background: var(--surface-variant);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
 }
