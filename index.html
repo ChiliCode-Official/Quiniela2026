@@ -17,6 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
 </head>
 <body data-theme="light">
 
@@ -133,6 +134,12 @@
 
     <!-- Main Content View -->
     <section id="main-view" class="view">
+      
+      <!-- Pull to Refresh Indicator -->
+      <div id="ptr-indicator" class="ptr-indicator">
+        <i class="fa-solid fa-arrow-down" id="ptr-icon"></i>
+      </div>
+
       <header class="app-header">
         <h2 style="display:flex; align-items:center;">Mundial 2026 <span id="display-rank" style="font-size:0.85rem; color:black; padding:2px 8px; border-radius:12px; display:none; margin-left:10px; font-weight:800; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span></h2>
         <div class="user-info">

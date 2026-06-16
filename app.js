@@ -63,6 +63,21 @@ const teamToGroup = {
   'Inglaterra': 'Grupo L', 'Croacia': 'Grupo L', 'Ghana': 'Grupo L', 'Panamá': 'Grupo L'
 };
 
+const flagMap = {
+  'México': 'mx', 'Sudáfrica': 'za', 'Corea del Sur': 'kr', 'República Checa': 'cz',
+  'Canadá': 'ca', 'Bosnia y Herzegovina': 'ba', 'Catar': 'qa', 'Suiza': 'ch',
+  'Brasil': 'br', 'Marruecos': 'ma', 'Haití': 'ht', 'Escocia': 'gb-sct',
+  'Estados Unidos': 'us', 'Paraguay': 'py', 'Australia': 'au', 'Turquía': 'tr',
+  'Alemania': 'de', 'Curazao': 'cw', 'Costa de Marfil': 'ci', 'Ecuador': 'ec',
+  'Países Bajos': 'nl', 'Japón': 'jp', 'Suecia': 'se', 'Túnez': 'tn',
+  'Bélgica': 'be', 'Egipto': 'eg', 'Irán': 'ir', 'Nueva Zelanda': 'nz',
+  'España': 'es', 'Cabo Verde': 'cv', 'Arabia Saudita': 'sa', 'Uruguay': 'uy',
+  'Francia': 'fr', 'Senegal': 'sn', 'Irak': 'iq', 'Noruega': 'no',
+  'Argentina': 'ar', 'Argelia': 'dz', 'Austria': 'at', 'Jordania': 'jo',
+  'Portugal': 'pt', 'RD Congo': 'cd', 'Uzbekistán': 'uz', 'Colombia': 'co',
+  'Inglaterra': 'gb-eng', 'Croacia': 'hr', 'Ghana': 'gh', 'Panamá': 'pa'
+};
+
 function getMatchStage(partidoId) {
   const id = parseInt(partidoId);
   if (id >= 1 && id <= 72) return 'grupos';
@@ -434,6 +449,52 @@ async function handleAuth(e, action) {
 // --- APP INITIALIZATION ---
 let hasShownConfetti = false;
 
+// Pull-To-Refresh setup
+let ptrStartY = 0;
+let ptrCurrentY = 0;
+let isPulling = false;
+const ptrIndicator = document.getElementById('ptr-indicator');
+const ptrIcon = document.getElementById('ptr-icon');
+
+document.addEventListener('touchstart', (e) => {
+  if (window.scrollY === 0) {
+    ptrStartY = e.touches[0].clientY;
+    isPulling = true;
+  }
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  if (!isPulling) return;
+  ptrCurrentY = e.touches[0].clientY;
+  const pullDistance = ptrCurrentY - ptrStartY;
+  
+  if (pullDistance > 0 && window.scrollY === 0) {
+    ptrIndicator.style.transform = `translateY(${Math.min(pullDistance / 2, 80)}px)`;
+    if (pullDistance > 120) {
+      ptrIcon.className = 'fa-solid fa-rotate text-primary';
+    } else {
+      ptrIcon.className = 'fa-solid fa-arrow-down text-primary';
+    }
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+  if (!isPulling) return;
+  isPulling = false;
+  const pullDistance = ptrCurrentY - ptrStartY;
+  
+  if (pullDistance > 120 && window.scrollY === 0) {
+    ptrIcon.className = 'fa-solid fa-circle-notch fa-spin text-primary';
+    if (navigator.vibrate) navigator.vibrate(50);
+    initApp().then(() => {
+      ptrIndicator.style.transform = 'translateY(0)';
+      ptrIcon.className = 'fa-solid fa-arrow-down text-primary';
+    });
+  } else {
+    ptrIndicator.style.transform = 'translateY(0)';
+  }
+});
+
 async function initApp() {
   document.getElementById('auth-view').classList.remove('active-view');
   document.getElementById('main-view').classList.add('active-view');
@@ -508,6 +569,20 @@ async function loadUserRankAndConfetti() {
 }
 
 async function loadMatchesData() {
+  const quinielaList = document.getElementById('quiniela-list');
+  const podioList = document.getElementById('podio-list');
+  const resultadosList = document.getElementById('resultados-list');
+  
+  // Mostrar Skeleton Loaders
+  const skeletonHTML = `
+    <div class="skeleton skeleton-card"></div>
+    <div class="skeleton skeleton-card"></div>
+    <div class="skeleton skeleton-card"></div>
+  `;
+  if (quinielaList && quinielaList.innerHTML === '') quinielaList.innerHTML = skeletonHTML;
+  if (podioList && podioList.innerHTML === '') podioList.innerHTML = skeletonHTML;
+  if (resultadosList && resultadosList.innerHTML === '') resultadosList.innerHTML = skeletonHTML;
+
   try {
     const resPartidos = await fetch(`${SCRIPT_URL}?action=getPartidos`);
     const dataPartidos = await resPartidos.json();
@@ -518,6 +593,9 @@ async function loadMatchesData() {
     if (dataPronos.success) userPredictions = dataPronos.pronosticos;
     
     renderQuiniela();
+    if (document.getElementById('resultados-list').parentElement.classList.contains('active-view')) {
+      renderResultados();
+    }
   } catch (error) {
     showToast('Error cargando datos reales', 'error');
   }
@@ -560,7 +638,13 @@ function renderQuiniela() {
   });
   
   if (filteredMatches.length === 0) {
-    container.innerHTML = '<div class="m-card" style="text-align:center; color:var(--text-muted); padding: 30px;">No hay partidos que coincidan con la búsqueda.</div>';
+    container.innerHTML = `
+      <div class="empty-state">
+        <i class="fa-regular fa-face-frown-open"></i>
+        <h3>¡Sin Resultados!</h3>
+        <p style="margin-top: 10px;">No hay partidos que coincidan con la búsqueda.</p>
+      </div>
+    `;
     return;
   }
   
@@ -599,105 +683,133 @@ function renderQuiniela() {
     const lockTime = matchDate ? new Date(matchDate.getTime() - oneDayMs) : null;
     const isLocked = lockTime && now >= lockTime;
     
-    let btnText = '';
-    let btnClass = 'btn-save-prono';
-    if (isLocked) {
-      btnClass += ' locked';
-      btnText = '<i class="fa-solid fa-lock"></i> Tiempo Agotado';
-    } else if (isPending) {
-      btnClass += ' pending-save';
-      btnText = '<i class="fa-solid fa-circle-exclamation"></i> Guardar Cambios';
-    } else if (prono) {
-      btnClass += ' saved';
-      btnText = '<i class="fa-solid fa-check"></i> Actualizar';
-    } else {
-      btnText = 'Guardar Pronóstico';
-    }
+    const localCode = flagMap[match.equipoLocal] || 'un';
+    const visitCode = flagMap[match.equipoVisitante] || 'un';
+    const localFlag = `https://flagcdn.com/w80/${localCode}.png`;
+    const visitFlag = `https://flagcdn.com/w80/${visitCode}.png`;
     
-    let timingHtml = '';
-    if (matchDate && lockTime) {
-      timingHtml = `
-        <div class="match-timing-info">
-          <div class="match-time">
-            <i class="fa-regular fa-clock"></i> Partido: ${formatDate(match.date)}
-          </div>
-          <div class="close-time">
-            <i class="fa-solid fa-lock"></i> Cierre: ${formatDate(lockTime.toISOString())}
-          </div>
+    let isLive = false;
+    if (match.status === 'IN_PLAY' || match.status === 'PAUSED') isLive = true;
+    
+    let statusText = 'PREDICCIÓN: NO';
+    let statusClass = 'scheduled';
+    if (pLocal !== '' && pVisit !== '') {
+      statusText = 'PREDICCIÓN: SÍ';
+      statusClass = 'finished';
+    }
+    if (isLive) {
+      statusText = 'EN VIVO';
+      statusClass = 'live';
+    }
+
+    let saveBtnHtml = '';
+    if (!isLocked) {
+      const btnClass = isPending ? 'btn-save-prono pending-save' : (prono ? 'btn-save-prono saved' : 'btn-save-prono');
+      const btnText = isPending ? 'Actualizar' : (prono ? 'Guardado' : 'Guardar');
+      const btnIcon = isPending ? '<i class="fa-solid fa-rotate"></i>' : (prono ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-floppy-disk"></i>');
+      saveBtnHtml = `
+        <div class="match-action">
+          <button id="btn-${match.partidoId}" class="${btnClass}" onclick="savePrediction(${match.partidoId}, this)">
+            ${btnIcon} ${btnText}
+          </button>
         </div>
       `;
     }
     
-    const card = document.createElement('div');
-    card.className = 'm-card match-card' + (isLocked ? ' locked-card' : '');
-    card.innerHTML = `
+    const div = document.createElement('div');
+    div.className = isLocked ? 'm-card match-card locked-card' : 'm-card match-card';
+    
+    div.innerHTML = `
       <div class="match-header">
-        <span class="match-date"><i class="fa-regular fa-calendar"></i> ${formatDate(match.date)}</span>
-        <span class="match-status">${isLocked ? '<i class="fa-solid fa-lock"></i> Cerrado' : '<i class="fa-regular fa-clock"></i> Pendiente'}</span>
+        <span>COPA DE FÚTBOL</span>
+        <span class="match-date">${match.date ? new Date(match.date).toLocaleString('es-MX', {day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'}) : 'Por definir'}</span>
       </div>
+      
       <div class="teams-container">
         <div class="team">
+          <img src="${localFlag}" class="flag-img" onerror="this.src='https://flagcdn.com/w80/un.png'">
           <span class="team-name">${match.equipoLocal}</span>
-          <input type="number" id="hl-${match.partidoId}" class="score-input" min="0" max="15" value="${pLocal}" ${isLocked ? 'disabled' : ''}>
         </div>
-        <div class="vs">VS</div>
+        <div class="vs-col">
+          <span class="vs-text">VS</span>
+        </div>
         <div class="team">
+          <img src="${visitFlag}" class="flag-img" onerror="this.src='https://flagcdn.com/w80/un.png'">
           <span class="team-name">${match.equipoVisitante}</span>
-          <input type="number" id="al-${match.partidoId}" class="score-input" min="0" max="15" value="${pVisit}" ${isLocked ? 'disabled' : ''}>
         </div>
       </div>
-      ${timingHtml}
-      <div class="match-action">
-        <button class="${btnClass}" onclick="savePrediction('${match.partidoId}', this)" ${isLocked ? 'disabled' : ''}>
-          ${btnText}
-        </button>
+      
+      <div class="score-controls-row">
+        <div class="score-control">
+          <button class="btn-score" onclick="changeScore('h-${match.partidoId}', -1)" ${isLocked ? 'disabled' : ''}>-</button>
+          <input type="number" id="h-${match.partidoId}" class="score-input" min="0" max="20" placeholder="-" value="${pLocal}" onchange="markAsPending(${match.partidoId})" ${isLocked ? 'disabled' : ''}>
+          <button class="btn-score" onclick="changeScore('h-${match.partidoId}', 1)" ${isLocked ? 'disabled' : ''}>+</button>
+        </div>
+        <span style="font-weight: 800; color: var(--text-muted);">:</span>
+        <div class="score-control">
+          <button class="btn-score" onclick="changeScore('a-${match.partidoId}', -1)" ${isLocked ? 'disabled' : ''}>-</button>
+          <input type="number" id="a-${match.partidoId}" class="score-input" min="0" max="20" placeholder="-" value="${pVisit}" onchange="markAsPending(${match.partidoId})" ${isLocked ? 'disabled' : ''}>
+          <button class="btn-score" onclick="changeScore('a-${match.partidoId}', 1)" ${isLocked ? 'disabled' : ''}>+</button>
+        </div>
+      </div>
+      
+      ${saveBtnHtml}
+      
+      <div class="match-status-bar">
+        <div class="status-pill ${statusClass}">${statusText}</div>
       </div>
     `;
-    
-    container.appendChild(card);
-    
-    // Bind listeners to detect local changes dynamically
-    if (!isLocked) {
-      const hInput = card.querySelector(`#hl-${match.partidoId}`);
-      const aInput = card.querySelector(`#al-${match.partidoId}`);
-      const btnSave = card.querySelector(`.btn-save-prono`);
-      
-      if (hInput && aInput && btnSave) {
-        const handleInput = () => {
-          const hVal = hInput.value.trim();
-          const aVal = aInput.value.trim();
-          
-          const savedLocal = prono ? String(prono.golesLocal).trim() : '';
-          const savedVisit = prono ? String(prono.golesVisitante).trim() : '';
-          
-          if (hVal === savedLocal && aVal === savedVisit) {
-            delete localInputCache[match.partidoId];
-            btnSave.className = 'btn-save-prono' + (prono ? ' saved' : '');
-            btnSave.innerHTML = prono ? '<i class="fa-solid fa-check"></i> Actualizar' : 'Guardar Pronóstico';
-          } else {
-            localInputCache[match.partidoId] = {
-              golesLocal: hVal,
-              golesVisitante: aVal
-            };
-            btnSave.className = 'btn-save-prono pending-save';
-            btnSave.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Guardar Cambios';
-          }
-          saveLocalInputCache();
-          updateAlertsBanner();
-        };
-        
-        hInput.addEventListener('input', handleInput);
-        aInput.addEventListener('input', handleInput);
-      }
-    }
+    container.appendChild(div);
   });
+}
+
+window.changeScore = function(inputId, amount) {
+  if (navigator.vibrate) navigator.vibrate(10);
+  const input = document.getElementById(inputId);
+  if (!input || input.disabled) return;
+  let val = parseInt(input.value);
+  if (isNaN(val)) val = 0;
+  val += amount;
+  if (val < 0) val = 0;
+  if (val > 20) val = 20;
+  input.value = val;
+  
+  const partidoId = inputId.split('-')[1];
+  markAsPending(partidoId);
+}
+
+window.markAsPending = function(partidoId) {
+  const hInput = document.getElementById(`h-${partidoId}`);
+  const aInput = document.getElementById(`a-${partidoId}`);
+  const btnSave = document.getElementById(`btn-${partidoId}`);
+  
+  if (!hInput || !aInput || !btnSave) return;
+  
+  const hVal = hInput.value.trim();
+  const aVal = aInput.value.trim();
+  
+  const prono = userPredictions.find(p => p.partidoId == partidoId);
+  const savedLocal = prono ? String(prono.golesLocal).trim() : '';
+  const savedVisit = prono ? String(prono.golesVisitante).trim() : '';
+  
+  if (hVal === savedLocal && aVal === savedVisit) {
+    delete localInputCache[partidoId];
+    btnSave.className = 'btn-save-prono' + (prono ? ' saved' : '');
+    btnSave.innerHTML = prono ? '<i class="fa-solid fa-check"></i> Actualizar' : 'Guardar';
+  } else {
+    localInputCache[partidoId] = { golesLocal: hVal, golesVisitante: aVal };
+    btnSave.className = 'btn-save-prono pending-save';
+    btnSave.innerHTML = '<i class="fa-solid fa-rotate"></i> Actualizar';
+  }
+  saveLocalInputCache();
+  updateAlertsBanner();
 }
 
 window.savePrediction = async function(partidoId, btn) {
   if (!btn) btn = event.currentTarget;
   
-  const hInput = document.getElementById(`hl-${partidoId}`).value;
-  const aInput = document.getElementById(`al-${partidoId}`).value;
+  const hInput = document.getElementById(`h-${partidoId}`).value;
+  const aInput = document.getElementById(`a-${partidoId}`).value;
   
   if (hInput === '' || aInput === '') {
     showToast('Ingresa ambos resultados', 'warning');
@@ -722,27 +834,24 @@ window.savePrediction = async function(partidoId, btn) {
     
     btn.disabled = false;
     if (data.success) {
-      showToast('Pronóstico guardado exitosamente');
-      
-      // Actualizar userPredictions en memoria
+      // Update memory
       let prono = userPredictions.find(p => p.partidoId == partidoId);
       if (prono) {
         prono.golesLocal = hInput;
         prono.golesVisitante = aInput;
       } else {
-        userPredictions.push({
-          partidoId: partidoId,
-          golesLocal: hInput,
-          golesVisitante: aInput
-        });
+        userPredictions.push({ partidoId: partidoId, golesLocal: hInput, golesVisitante: aInput });
       }
       
-      // Limpiar del caché local
       delete localInputCache[partidoId];
       saveLocalInputCache();
       
-      // Re-renderizar la quiniela
-      renderQuiniela();
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+      btn.className = 'btn-save-prono saved';
+      btn.innerHTML = `<dotlottie-player src="https://lottie.host/8c067e41-0306-4443-8f0a-1102928574d7/1n13wFzLWe.json" background="transparent" speed="1" style="width: 25px; height: 25px;" autoplay></dotlottie-player> Guardado`;
+      
+      showToast('Pronóstico guardado exitosamente', 'success');
+      updateAlertsBanner();
     } else {
       showToast(data.message, 'error');
       btn.innerHTML = originalHtml;
@@ -767,7 +876,13 @@ async function loadPodio() {
     if (data.success) {
       container.innerHTML = '';
       if (data.podio.length === 0) {
-        container.innerHTML = '<div style="padding:20px; text-align:center;">Aún no hay puntos.</div>';
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-ranking-star"></i>
+            <h3>Aún no hay puntos</h3>
+            <p style="margin-top: 10px;">¡Comienza a llenar tu quiniela!</p>
+          </div>
+        `;
         return;
       }
       
