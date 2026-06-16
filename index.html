@@ -18,6 +18,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+  <!-- html2canvas for Spotify Wrapped share card -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body data-theme="light">
 
@@ -472,6 +474,28 @@
   </div>
 
   <div id="toast" class="toast">Mensaje</div>
+
+  <!-- Share Card Template (Hidden) -->
+  <div id="share-card-container" style="position: absolute; top: -9999px; left: -9999px;">
+    <div id="share-card-template" class="share-card">
+      <div class="share-card-header">
+        <i class="fa-solid fa-trophy"></i> Quiniela Notaría 134
+      </div>
+      <div class="share-card-body">
+        <h2 id="share-card-user">Usuario</h2>
+        <div class="share-card-points">
+          <span id="share-card-pts">0</span> pts
+        </div>
+        <div class="share-card-rank">
+          Lugar <span id="share-card-pos">#1</span>
+        </div>
+        <p id="share-card-msg">¡Rómpele en el Mundial 2026!</p>
+      </div>
+      <div class="share-card-footer">
+        Copa del Mundo 2026
+      </div>
+    </div>
+  </div>
 
   <script src="./app.js"></script>
 </body>

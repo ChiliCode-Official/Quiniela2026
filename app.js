@@ -1163,6 +1163,8 @@ function renderResultados() {
       feedbackHtml = `<div class="feedback-box pts-0">No enviaste pronóstico. 0 Pts</div>`;
     }
 
+    const searchUrl = `https://www.google.com/search?q=Copa+Mundial+2026+${encodeURIComponent(match.equipoLocal)}+vs+${encodeURIComponent(match.equipoVisitante)}+resultado`;
+    
     const card = document.createElement('div');
     card.className = 'm-card match-card';
     card.innerHTML = `
@@ -1180,6 +1182,11 @@ function renderResultados() {
           <span class="team-name">${match.equipoVisitante}</span>
           <span class="real-score">${match.golesVisitante !== '' ? match.golesVisitante : '-'}</span>
         </div>
+      </div>
+      <div style="text-align: center; margin-top: 15px;">
+        <a href="${searchUrl}" target="_blank" class="btn" style="background: rgba(0,0,0,0.05); color: var(--text-main); font-size: 0.85rem; padding: 6px 12px;">
+          <i class="fa-brands fa-google"></i> Buscar Resultado
+        </a>
       </div>
       ${feedbackHtml}
     `;
@@ -1278,13 +1285,108 @@ if (!localStorage.getItem('quiniela_tutorial_seen')) {
   setTimeout(showTutorial, 2000);
 }
 
-// --- WEB SHARE API ---
-function shareApp() {
+// --- WEB SHARE API (Spotify Wrapped Style) ---
+async function shareApp() {
+  const container = document.getElementById('share-card-container');
+  const template = document.getElementById('share-card-template');
+  
+  if (!container || !template || typeof html2canvas === 'undefined') {
+    // Fallback if script didn't load
+    fallbackShare();
+    return;
+  }
+  
+  // Rellenar datos
+  document.getElementById('share-card-user').textContent = currentUser || 'Usuario';
+  document.getElementById('share-card-pts').textContent = currentPoints;
+  
+  // Calcular Ranking
+  let rank = '-';
+  const podioList = document.querySelectorAll('.rank-item');
+  if (podioList.length > 0) {
+    podioList.forEach((item, index) => {
+      if (item.querySelector('.rank-user').textContent.trim() === currentUser) {
+        rank = '#' + (index + 1);
+      }
+    });
+  }
+  document.getElementById('share-card-pos').textContent = rank;
+  
+  let msg = '¡Rómpele en el Mundial 2026!';
+  if (currentPoints > 0) msg = '¡Estoy dominando la Quiniela! 😎';
+  if (rank === '#1') msg = '¡Soy el Rey de la Quiniela! 👑';
+  document.getElementById('share-card-msg').textContent = msg;
+
+  // Generar imagen
+  showToast('Preparando tu imagen...', 'info');
+  try {
+    // Necesitamos que el elemento esté visible brevemente para que html2canvas lo dibuje bien
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.zIndex = '-9999';
+    
+    const canvas = await html2canvas(template, {
+      scale: 2,
+      backgroundColor: null,
+      logging: false
+    });
+    
+    // Ocultar de nuevo
+    container.style.top = '-9999px';
+    container.style.left = '-9999px';
+    
+    canvas.toBlob(async (blob) => {
+      if (!blob) throw new Error('Blob nulo');
+      
+      const file = new File([blob], 'Mi_Quiniela.png', { type: 'image/png' });
+      const textShare = `¡Únete a la Quiniela Mundial de la Notaría 134! Voy con ${currentPoints} puntos. ¿Crees poder ganarme? 🔥 https://chilicode-official.github.io/Quiniela2026/`;
+      
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: 'Quiniela Notaría 134',
+            text: textShare,
+            files: [file]
+          });
+        } catch (e) {
+          console.error(e);
+          forceDownload(blob);
+        }
+      } else {
+        // Fallback for Desktop: Download image
+        forceDownload(blob);
+        if (navigator.share) {
+          // Aún así compartir el link
+          navigator.share({ title: 'Quiniela Notaría 134', text: textShare });
+        }
+      }
+    }, 'image/png');
+    
+  } catch (err) {
+    container.style.top = '-9999px';
+    container.style.left = '-9999px';
+    showToast('Error al generar la imagen', 'error');
+    fallbackShare();
+  }
+}
+
+function forceDownload(blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Mi_Quiniela_Notaria134.png';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Se ha descargado tu tarjeta de resultados 🎉', 'success');
+}
+
+function fallbackShare() {
   if (navigator.share) {
     navigator.share({
       title: 'Quiniela Notaría 134',
-      text: `¡Únete a la Quiniela Mundial de la Notaría 134! Voy con ${currentPoints} puntos. ¿Crees poder ganarme? 🔥`,
-      url: 'https://chilicode-official.github.io/Quiniela2026/'
+      text: `¡Únete a la Quiniela Mundial de la Notaría 134! Voy con ${currentPoints} puntos. ¿Crees poder ganarme? 🔥 https://chilicode-official.github.io/Quiniela2026/`,
     }).catch(console.error);
   } else {
     showToast('Tu navegador no soporta compartir directamente.', 'warning');

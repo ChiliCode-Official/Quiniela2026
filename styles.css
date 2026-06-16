@@ -1186,3 +1186,72 @@ h1, h2, h3 { font-weight: 600; }
   box-sizing: border-box;
   animation: slideUpSpring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
+
+/* Share Card Styles */
+.share-card {
+  width: 400px;
+  height: 600px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  font-family: 'Inter', sans-serif;
+  border-radius: 20px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+.share-card::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 50%;
+}
+.share-card-header {
+  font-size: 1.2rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.share-card-body {
+  text-align: center;
+  z-index: 1;
+}
+.share-card-body h2 {
+  font-size: 2.5rem;
+  margin: 0;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+.share-card-points {
+  font-size: 4rem;
+  font-weight: 900;
+  margin: 20px 0;
+  text-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+.share-card-rank {
+  font-size: 1.5rem;
+  font-weight: 600;
+  background: rgba(255,255,255,0.2);
+  padding: 10px 20px;
+  border-radius: 30px;
+  display: inline-block;
+  backdrop-filter: blur(5px);
+}
+.share-card-body p {
+  margin-top: 25px;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+.share-card-footer {
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.7;
+  font-weight: 500;
+}
