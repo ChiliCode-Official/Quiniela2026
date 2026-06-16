@@ -224,6 +224,11 @@ themeBtn.addEventListener('click', () => {
   body.setAttribute('data-theme', newTheme);
   localStorage.setItem('theme', newTheme);
   updateThemeIcon(newTheme);
+  
+  // Re-apply gender colors if needed (since default blue changes in dark mode)
+  if (typeof applyGenderToAvatars === 'function') {
+    applyGenderToAvatars();
+  }
 });
 
 function updateThemeIcon(theme) {
@@ -327,6 +332,18 @@ if (togglePassPerfil && passInputPerfil) {
   });
 }
 
+// --- EMAIL TOGGLE (PERFIL) ---
+const toggleEmailPerfil = document.getElementById('profile-toggle-email');
+const emailInputPerfil = document.getElementById('profile-cred-email');
+if (toggleEmailPerfil && emailInputPerfil) {
+  toggleEmailPerfil.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isPass = emailInputPerfil.getAttribute('type') === 'password';
+    emailInputPerfil.setAttribute('type', isPass ? 'text' : 'password');
+    toggleEmailPerfil.innerHTML = isPass ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
+  });
+}
+
 // --- GENDER & AVATAR LOGIC ---
 const genderRadios = document.querySelectorAll('input[name="gender"]');
 function applyGenderToAvatars() {
@@ -343,6 +360,18 @@ function applyGenderToAvatars() {
   
   const radio = document.getElementById(`gender-${gender}`);
   if (radio) radio.checked = true;
+  
+  // Update App Primary Color
+  const root = document.documentElement;
+  if (gender === 'female') {
+    root.style.setProperty('--primary', '#ec4899');
+  } else if (gender === 'other') {
+    root.style.setProperty('--primary', '#8b5cf6');
+  } else {
+    // Default blue (male)
+    const isDark = document.body.getAttribute('data-theme') === 'dark';
+    root.style.setProperty('--primary', isDark ? '#a8c7fa' : '#0b57d0');
+  }
 }
 
 genderRadios.forEach(radio => {
@@ -388,6 +417,18 @@ navItems.forEach(item => {
   // Los navegadores modernos manejan el clic sin delay si el viewport está bien configurado
   item.addEventListener('click', handleNavigation);
 });
+
+// --- RETURN TO MAIN FROM PROFILE ---
+function returnToMain() {
+  const btnQuiniela = document.querySelector('.nav-item[data-target="tab-quiniela"]');
+  if (btnQuiniela) btnQuiniela.click();
+}
+
+const btnBackProfile = document.getElementById('btn-back-profile');
+if (btnBackProfile) btnBackProfile.addEventListener('click', returnToMain);
+
+const profileAvatarLarge = document.getElementById('profile-avatar-large');
+if (profileAvatarLarge) profileAvatarLarge.addEventListener('click', returnToMain);
 
 // --- AUTO LOGIN & LOGOUT ---
 const savedEmail = localStorage.getItem('quiniela_email');
@@ -549,6 +590,9 @@ async function initApp() {
   const credPass = document.getElementById('profile-cred-pass');
   if (credPass) credPass.value = localStorage.getItem('quiniela_pass') || '******';
 
+  const credEmail = document.getElementById('profile-cred-email');
+  if (credEmail) credEmail.value = localStorage.getItem('quiniela_email') || 'Oculto';
+
   applyGenderToAvatars();
   
   // Solicitar permiso de notificaciones
@@ -632,11 +676,12 @@ async function loadMatchesData() {
   const podioList = document.getElementById('podio-list');
   const resultadosList = document.getElementById('resultados-list');
   
-  // Mostrar Skeleton Loaders
+  // Mostrar Skeleton Loaders (ahora usamos un balón animado)
   const skeletonHTML = `
-    <div class="skeleton skeleton-card"></div>
-    <div class="skeleton skeleton-card"></div>
-    <div class="skeleton skeleton-card"></div>
+    <div style="text-align:center; padding: 40px; color: var(--primary);">
+      <i class="fa-solid fa-futbol fa-bounce fa-3x"></i>
+      <p style="margin-top: 15px; font-size: 1.1rem; color: var(--text-muted);">Cargando...</p>
+    </div>
   `;
   if (quinielaList && quinielaList.innerHTML === '') quinielaList.innerHTML = skeletonHTML;
   if (podioList && podioList.innerHTML === '') podioList.innerHTML = skeletonHTML;
@@ -941,7 +986,12 @@ async function loadPodio() {
   const container = document.getElementById('podio-list');
   
   // Cargamos los datos reales del servidor para todos los usuarios
-  container.innerHTML = '<div style="text-align:center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin fa-2x text-muted"></i></div>';
+  container.innerHTML = `
+    <div style="text-align:center; padding: 40px; color: var(--primary);">
+      <i class="fa-solid fa-futbol fa-bounce fa-3x"></i>
+      <p style="margin-top: 15px; font-size: 1.1rem; color: var(--text-muted);">Cargando podio...</p>
+    </div>
+  `;
   
   try {
     const res = await fetch(`${SCRIPT_URL}?action=getPodio`);

@@ -280,9 +280,12 @@
       </div>
       
       <!-- TAB PERFIL (NEW) -->
-      <div class="tab-content hide" id="tab-perfil">
+      <div class="tab-content hide" id="tab-perfil" style="position: relative;">
+        <button id="btn-back-profile" style="position: absolute; top: 10px; left: 10px; background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
         <div class="profile-header">
-          <div class="profile-avatar-large" id="profile-avatar-large">
+          <div class="profile-avatar-large" id="profile-avatar-large" style="cursor: pointer;" title="Volver al inicio">
             <i class="fa-solid fa-user"></i>
           </div>
           <h3 id="profile-username" style="margin-top: 15px; font-size: 1.5rem; color: var(--text-color);">Usuario</h3>
@@ -318,6 +321,13 @@
           <div class="profile-credential">
             <span><strong>Usuario:</strong></span>
             <span id="profile-cred-user" style="color: var(--text-muted);">---</span>
+          </div>
+          <div class="profile-credential" style="margin-top: 15px; position: relative;">
+            <span><strong>Correo:</strong></span>
+            <input type="password" id="profile-cred-email" value="" readonly style="background: transparent; border: none; font-size: 0.95rem; color: var(--text-muted); outline: none; margin-left: 10px; width: 140px;">
+            <button id="profile-toggle-email" style="background: none; border: none; color: var(--primary); cursor: pointer; font-size: 1.1rem; position: absolute; right: 0;">
+              <i class="fa-solid fa-eye"></i>
+            </button>
           </div>
           <div class="profile-credential" style="margin-top: 15px; position: relative;">
             <span><strong>Contraseña:</strong></span>
