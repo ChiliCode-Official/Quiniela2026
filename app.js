@@ -691,10 +691,10 @@ function renderQuiniela() {
     let isLive = false;
     if (match.status === 'IN_PLAY' || match.status === 'PAUSED') isLive = true;
     
-    let statusText = 'PREDICCIÓN: NO';
+    let statusText = 'PREDICCIÓN: FALTANTE';
     let statusClass = 'scheduled';
     if (pLocal !== '' && pVisit !== '') {
-      statusText = 'PREDICCIÓN: SÍ';
+      statusText = 'PREDICCIÓN: SÍ | RESULTADO: PENDIENTE';
       statusClass = 'finished';
     }
     if (isLive) {
@@ -778,6 +778,8 @@ window.changeScore = function(inputId, amount) {
   markAsPending(partidoId);
 }
 
+window.autoSaveTimers = window.autoSaveTimers || {};
+
 window.markAsPending = function(partidoId) {
   const hInput = document.getElementById(`h-${partidoId}`);
   const aInput = document.getElementById(`a-${partidoId}`);
@@ -800,6 +802,19 @@ window.markAsPending = function(partidoId) {
     localInputCache[partidoId] = { golesLocal: hVal, golesVisitante: aVal };
     btnSave.className = 'btn-save-prono pending-save';
     btnSave.innerHTML = '<i class="fa-solid fa-rotate"></i> Actualizar';
+    
+    // Autoguardado al ingresar ambos valores (espera 600ms después del último número ingresado)
+    if (hVal !== '' && aVal !== '') {
+      if (window.autoSaveTimers[partidoId]) {
+        clearTimeout(window.autoSaveTimers[partidoId]);
+      }
+      window.autoSaveTimers[partidoId] = setTimeout(() => {
+        // Solo llamamos savePrediction si el botón no está deshabilitado por un guardado anterior
+        if (!btnSave.disabled) {
+          savePrediction(partidoId, btnSave);
+        }
+      }, 600);
+    }
   }
   saveLocalInputCache();
   updateAlertsBanner();
