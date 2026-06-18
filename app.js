@@ -711,7 +711,8 @@ async function loadMatchesData() {
     const dataPartidos = await resPartidos.json();
     if (dataPartidos.success) matchesData = dataPartidos.matches;
     
-    const resPronos = await fetch(`${SCRIPT_URL}?action=getMisPronosticos&username=${currentUser}`);
+    const userEmail = localStorage.getItem('quiniela_email') || "";
+    const resPronos = await fetch(`${SCRIPT_URL}?action=getMisPronosticos&username=${currentUser}&email=${encodeURIComponent(userEmail)}`);
     const dataPronos = await resPronos.json();
     if (dataPronos.success) userPredictions = dataPronos.pronosticos;
     
@@ -1155,10 +1156,15 @@ function renderResultados() {
         </div>
       `;
     } else if (!prono && match.status === 'FINISHED') {
-      feedbackHtml = `<div class="feedback-box pts-0">No enviaste pronóstico. 0 Pts</div>`;
+      feedbackHtml = `<div class="feedback-box pts-0" style="margin-top: 15px;">Sin pronóstico registrado. 0 Pts</div>`;
     }
 
     const searchUrl = `https://www.google.com/search?q=Copa+Mundial+2026+${encodeURIComponent(match.equipoLocal)}+vs+${encodeURIComponent(match.equipoVisitante)}+resultado`;
+    
+    const localCode = flagMap[match.equipoLocal] || 'un';
+    const visitCode = flagMap[match.equipoVisitante] || 'un';
+    const localFlag = `https://flagcdn.com/w80/${localCode}.png`;
+    const visitFlag = `https://flagcdn.com/w80/${visitCode}.png`;
     
     const card = document.createElement('div');
     card.className = 'm-card match-card';
@@ -1167,17 +1173,33 @@ function renderResultados() {
         <span class="match-date">${formatDate(match.date)}</span>
         <span class="match-status ${statusClass}">${sIcon} ${statusText}</span>
       </div>
+      
       <div class="teams-container" style="margin-top: 15px;">
         <div class="team">
+          <img src="${localFlag}" class="flag-img" onerror="this.src='https://flagcdn.com/w80/un.png'">
           <span class="team-name">${match.equipoLocal}</span>
-          <span class="real-score">${match.golesLocal !== '' ? match.golesLocal : '-'}</span>
         </div>
-        <div class="vs">VS</div>
+        <div class="vs-col">
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Real</div>
+          <div style="background: rgba(0,0,0,0.05); padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 1.2rem; color: var(--text-main);">
+            ${match.golesLocal !== '' ? match.golesLocal : '-'} : ${match.golesVisitante !== '' ? match.golesVisitante : '-'}
+          </div>
+        </div>
         <div class="team">
+          <img src="${visitFlag}" class="flag-img" onerror="this.src='https://flagcdn.com/w80/un.png'">
           <span class="team-name">${match.equipoVisitante}</span>
-          <span class="real-score">${match.golesVisitante !== '' ? match.golesVisitante : '-'}</span>
         </div>
       </div>
+
+      <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border); text-align: center;">
+        <div style="font-size: 0.8rem; color: var(--primary); font-weight: bold; margin-bottom: 10px; text-transform: uppercase;">Lo que tú enviaste:</div>
+        <div class="score-controls-row" style="justify-content: center; gap: 15px;">
+          <input type="number" class="score-input" placeholder="-" value="${prono ? prono.golesLocal : ''}" disabled style="background: rgba(11,87,208,0.05); border-color: rgba(11,87,208,0.2);">
+          <span style="font-weight: 800; color: var(--text-muted); align-self: center;">:</span>
+          <input type="number" class="score-input" placeholder="-" value="${prono ? prono.golesVisitante : ''}" disabled style="background: rgba(11,87,208,0.05); border-color: rgba(11,87,208,0.2);">
+        </div>
+      </div>
+      
       <div style="text-align: center; margin-top: 15px;">
         <a href="${searchUrl}" target="_blank" class="btn" style="background: rgba(0,0,0,0.05); color: var(--text-main); font-size: 0.85rem; padding: 6px 12px;">
           <i class="fa-brands fa-google"></i> Buscar Resultado
@@ -1470,7 +1492,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Mark as read logic
   const checkBadge = () => {
     const badge = document.getElementById('notifs-badge');
-    if (badge && localStorage.getItem('quiniela_notifs_read') === 'true') {
+    if (badge && localStorage.getItem('quiniela_notifs_read_v2') === 'true') {
       badge.style.display = 'none';
     }
   };
@@ -1479,7 +1501,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnReadNotifs = document.getElementById('btn-read-notifs');
   if (btnReadNotifs) {
     btnReadNotifs.addEventListener('click', () => {
-      localStorage.setItem('quiniela_notifs_read', 'true');
+      localStorage.setItem('quiniela_notifs_read_v2', 'true');
       checkBadge();
       closeNotifsModal();
       showToast('Novedades marcadas como leídas', 'success');

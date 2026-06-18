@@ -139,8 +139,12 @@ function doGet(e) {
   if (action === 'getMisPronosticos') {
     const data = SpreadsheetApp.getActive().getSheetByName('Pronosticos').getDataRange().getValues();
     const reqUser = (e.parameter.username || "").trim().toLowerCase();
+    const reqEmail = (e.parameter.email || "").trim().toLowerCase();
     const pronosticos = data.slice(1)
-                            .filter(row => row[0].toString().trim().toLowerCase() === reqUser)
+                            .filter(row => {
+                              const r0 = row[0].toString().trim().toLowerCase();
+                              return r0 === reqUser || (reqEmail !== "" && r0 === reqEmail);
+                            })
                             .map(row => ({ partidoId: row[1], golesLocal: row[2], golesVisitante: row[3] }));
     return jsonResponse({ success: true, pronosticos });
   }
@@ -246,12 +250,17 @@ function recalcularTodosLosPuntos() {
   const sheetUsuarios = ss.getSheetByName('Usuarios');
   
   // --- RESPALDO AUTOMÁTICO DE SEGURIDAD ---
-  // Antes de tocar cualquier punto, creamos una copia de la hoja actual de usuarios.
-  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HH:mm");
-  const backupName = 'Usuarios_Backup_' + timestamp;
-  if (!ss.getSheetByName(backupName)) {
-    const backupSheet = sheetUsuarios.copyTo(ss);
-    backupSheet.setName(backupName);
+  // Antes de tocar cualquier punto, respaldamos en una ÚNICA hoja para evitar llenar la cuota de Google
+  const backupName = 'Usuarios_Backup';
+  let backupSheet = ss.getSheetByName(backupName);
+  if (!backupSheet) {
+    backupSheet = ss.insertSheet(backupName);
+  } else {
+    backupSheet.clear();
+  }
+  const dataBackup = sheetUsuarios.getDataRange().getValues();
+  if (dataBackup.length > 0) {
+    backupSheet.getRange(1, 1, dataBackup.length, dataBackup[0].length).setValues(dataBackup);
   }
   // ----------------------------------------
 
@@ -312,14 +321,10 @@ function recalcularTodosLosPuntos() {
     const uNameB = (usersData[i][1] || "").toString().trim().toLowerCase();
     const uNameA = (usersData[i][0] || "").toString().trim().toLowerCase();
     
-    let uName = "";
-    if (uNameB && !uNameB.includes('@')) {
-      uName = uNameB;
-    } else if (uNameA) {
-      uName = uNameA;
-    }
+    const ptsB = userPoints[uNameB] || 0;
+    const ptsA = (uNameA && uNameA !== uNameB) ? (userPoints[uNameA] || 0) : 0;
     
-    const finalPts = userPoints[uName] || 0;
+    const finalPts = ptsB + ptsA;
     sheetUsuarios.getRange(i + 1, 4).setValue(finalPts);
   }
 }
