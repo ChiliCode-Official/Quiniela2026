@@ -1408,22 +1408,22 @@ function openTiedUsersModal() {
     });
   }
   
-  modal.classList.remove('hidden');
+  modal.classList.remove('hide');
 }
 
 function closeTiedUsersModal() {
   const modal = document.getElementById('tied-users-modal');
-  if (modal) modal.classList.add('hidden');
+  if (modal) modal.classList.add('hide');
 }
 
 // --- NOTIFICATIONS MODAL ---
 function openNotifsModal() {
   const modal = document.getElementById('notifs-modal');
-  if (modal) modal.classList.remove('hidden');
+  if (modal) modal.classList.remove('hide');
 }
 function closeNotifsModal() {
   const modal = document.getElementById('notifs-modal');
-  if (modal) modal.classList.add('hidden');
+  if (modal) modal.classList.add('hide');
 }
 
 if (document.getElementById('btn-share-profile')) document.getElementById('btn-share-profile').addEventListener('click', shareApp);
