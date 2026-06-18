@@ -143,7 +143,16 @@
       </div>
 
       <header class="app-header">
-        <h2 style="display:flex; align-items:center;">Mundial 2026 <span id="display-rank" style="font-size:0.85rem; color:black; padding:2px 8px; border-radius:12px; display:none; margin-left:10px; font-weight:800; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span></h2>
+        <div style="display:flex; align-items:center; gap: 15px;">
+          <button id="btn-header-streak" onclick="document.querySelector('[data-target=\'tab-podio\']').click()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #ff5722;" title="Ver Racha">
+            <i class="fa-solid fa-fire"></i>
+          </button>
+          <button id="btn-header-notifs" onclick="openNotifsModal()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--primary); position: relative;" title="Notificaciones">
+            <i class="fa-solid fa-bell"></i>
+            <span style="position: absolute; top: -2px; right: -5px; background: red; width: 10px; height: 10px; border-radius: 50%;"></span>
+          </button>
+          <span id="display-rank" style="font-size:0.85rem; color:black; padding:2px 8px; border-radius:12px; display:none; font-weight:800; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span>
+        </div>
         <div class="user-info">
           <span id="display-user">Usuario</span>
           <span class="pts-badge" id="display-pts">0 pts</span>
@@ -280,7 +289,7 @@
         </div>
         <div class="m-card">
           <ul style="list-style: none;">
-            <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-green" style="width: 25px;"></i> <b>Acierto Exacto (2 Puntos):</b> Adivinar el marcador exacto del partido.</li>
+            <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-green" style="width: 25px;"></i> <b>Acierto Exacto (3 Puntos):</b> Adivinar el marcador exacto del partido.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-yellow" style="width: 25px;"></i> <b>Acierto Resultado (1 Punto):</b> Acertar qué equipo gana o si hay empate, sin atinarle al marcador.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-xmark text-red" style="width: 25px;"></i> <b>Fallo (0 Puntos):</b> No acertar el ganador ni el empate.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-clock text-primary" style="width: 25px;"></i> <b>Cierre:</b> Tienes hasta las 11:59 PM de un día antes del partido para enviar tus resultados. Se bloquean en la madrugada del día de juego.</li>
@@ -307,25 +316,12 @@
 
         <div class="m-card" style="margin-top: 20px;">
           <h4 style="margin-bottom: 15px; color: var(--text-color); border-bottom: 1px solid var(--border); padding-bottom: 8px;">Personaliza tu Avatar</h4>
-          <div class="gender-selection">
-            <label class="gender-radio">
-              <input type="radio" name="gender" value="male" id="gender-male">
-              <div class="gender-box male-box">
-                <i class="fa-solid fa-mars"></i> Hombre
-              </div>
-            </label>
-            <label class="gender-radio">
-              <input type="radio" name="gender" value="female" id="gender-female">
-              <div class="gender-box female-box">
-                <i class="fa-solid fa-venus"></i> Mujer
-              </div>
-            </label>
-            <label class="gender-radio">
-              <input type="radio" name="gender" value="other" id="gender-other">
-              <div class="gender-box other-box">
-                <i class="fa-solid fa-user-astronaut"></i> Otro
-              </div>
-            </label>
+          <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
+            <input type="color" id="theme-color-picker" value="#1a73e8" style="width: 50px; height: 50px; border: none; border-radius: 10px; cursor: pointer; padding: 0; background: none;">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);">Color de tu App</div>
+              <div style="font-size: 0.9rem; color: var(--text-color);">Elige tu tono favorito y toda la quiniela se adaptará a tu estilo.</div>
+            </div>
           </div>
         </div>
 
@@ -474,6 +470,37 @@
   </div>
 
   <div id="toast" class="toast">Mensaje</div>
+
+  <!-- Tied Users Modal -->
+  <div id="tied-users-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Empatados Contigo</h2>
+        <button class="close-btn" onclick="closeTiedUsersModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="text-align: left; max-height: 60vh; overflow-y: auto;">
+        <ul id="tied-users-list" style="list-style: none; padding: 0; margin: 0;">
+          <!-- Usuarios inyectados por JS -->
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications Modal -->
+  <div id="notifs-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Novedades de la App</h2>
+        <button class="close-btn" onclick="closeNotifsModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 20px;">
+        <div class="m-card" style="margin-bottom: 15px; border-left: 4px solid #ffd700; background: linear-gradient(90deg, rgba(255,215,0,0.1) 0%, rgba(255,165,0,0.1) 100%);">
+          <h4 style="color: #b8860b; margin-bottom: 5px;"><i class="fa-solid fa-star"></i> ¡Ahora ganarás más puntos!</h4>
+          <p style="font-size: 0.95rem; color: var(--text-color);">Recompensaremos mejor a los verdaderos expertos. A partir de ahora, si le atinas al <strong>Marcador Exacto</strong> de un partido te llevarás <strong>+3 Puntos</strong> (antes 2). ¡El podio se va a poner bueno!</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Share Card Template (Hidden) -->
   <div id="share-card-container" style="position: absolute; top: -9999px; left: -9999px;">

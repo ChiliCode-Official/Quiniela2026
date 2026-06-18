@@ -225,9 +225,9 @@ themeBtn.addEventListener('click', () => {
   localStorage.setItem('theme', newTheme);
   updateThemeIcon(newTheme);
   
-  // Re-apply gender colors if needed (since default blue changes in dark mode)
-  if (typeof applyGenderToAvatars === 'function') {
-    applyGenderToAvatars();
+  // Re-apply theme color logic
+  if (typeof applyThemeColor === 'function') {
+    applyThemeColor();
   }
 });
 
@@ -371,42 +371,33 @@ if (toggleEmailPerfil && emailInputPerfil) {
   });
 }
 
-// --- GENDER & AVATAR LOGIC ---
-const genderRadios = document.querySelectorAll('input[name="gender"]');
-function applyGenderToAvatars() {
-  const gender = localStorage.getItem('quiniela_gender') || 'other';
-  const headerAvatar = document.getElementById('header-avatar');
-  const profileAvatar = document.getElementById('profile-avatar-large');
-  
-  if (headerAvatar) {
-    headerAvatar.className = `user-avatar-btn nav-item-btn avatar-${gender}`;
-  }
-  if (profileAvatar) {
-    profileAvatar.className = `profile-avatar-large avatar-${gender}`;
-  }
-  
-  const radio = document.getElementById(`gender-${gender}`);
-  if (radio) radio.checked = true;
-  
-  // Update App Primary Color
-  const target = document.body;
-  if (gender === 'female') {
-    target.style.setProperty('--primary', '#ec4899');
-  } else if (gender === 'other') {
-    target.style.setProperty('--primary', '#8b5cf6');
-  } else {
-    // Default blue (male)
-    const isDark = document.body.getAttribute('data-theme') === 'dark';
-    target.style.setProperty('--primary', isDark ? '#a8c7fa' : '#0b57d0');
-  }
+// --- THEME COLOR LOGIC ---
+const colorPicker = document.getElementById('theme-color-picker');
+
+function adjustColor(color, amount) {
+    return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
 }
 
-genderRadios.forEach(radio => {
-  radio.addEventListener('change', (e) => {
-    localStorage.setItem('quiniela_gender', e.target.value);
-    applyGenderToAvatars();
+function applyThemeColor() {
+  const color = localStorage.getItem('quiniela_color') || '#1a73e8';
+  if (colorPicker) colorPicker.value = color;
+  
+  document.documentElement.style.setProperty('--primary', color);
+  document.documentElement.style.setProperty('--accent', adjustColor(color, 40)); // Lighter/Darker automatically
+  
+  // Clean avatars
+  const headerAvatar = document.getElementById('header-avatar');
+  const profileAvatar = document.getElementById('profile-avatar-large');
+  if (headerAvatar) headerAvatar.className = 'user-avatar-btn nav-item-btn';
+  if (profileAvatar) profileAvatar.className = 'profile-avatar-large';
+}
+
+if (colorPicker) {
+  colorPicker.addEventListener('input', (e) => {
+    localStorage.setItem('quiniela_color', e.target.value);
+    applyThemeColor();
   });
-});
+}
 
 // --- NAVEGACIÓN ---
 const navItems = document.querySelectorAll('.nav-item, .nav-item-btn');
@@ -620,7 +611,7 @@ async function initApp() {
   const credEmail = document.getElementById('profile-cred-email');
   if (credEmail) credEmail.value = localStorage.getItem('quiniela_email') || 'Oculto';
 
-  applyGenderToAvatars();
+  applyThemeColor();
   
   // Solicitar permiso de notificaciones
   if ('Notification' in window && Notification.permission === 'default') {
@@ -1009,6 +1000,8 @@ window.savePrediction = async function(partidoId, btn) {
   }
 }
 
+let globalPodioData = [];
+
 async function loadPodio() {
   const container = document.getElementById('podio-list');
   
@@ -1025,6 +1018,7 @@ async function loadPodio() {
     const data = await res.json();
     
     if (data.success) {
+      globalPodioData = data.podio || [];
       container.innerHTML = '';
       if (data.podio.length === 0) {
         container.innerHTML = `
@@ -1053,7 +1047,7 @@ async function loadPodio() {
           
           let text = `Estás en la posición <b>#${userPos}</b> con <b>${currentPoints} pts</b>.`;
           if (tiedUsers > 0) {
-            text += `<br>Hay ${tiedUsers} usuario(s) más empatado(s) contigo. ¡Rómpele!`;
+            text += `<br><a href="#" onclick="openTiedUsersModal()" style="color: var(--primary); font-weight: bold; text-decoration: underline;">Hay ${tiedUsers} usuario(s) más empatado(s) contigo. ¡Rómpele!</a>`;
           } else {
             text += `<br>¡Tienes tu lugar asegurado sin empates por ahora!`;
           }
@@ -1149,10 +1143,10 @@ function renderResultados() {
       let rGanador = rh > ra ? 1 : (rh < ra ? -1 : 0);
       let pGanador = ph > pa ? 1 : (ph < pa ? -1 : 0);
       
-      if (ph === rh && pa === ra) pts = 2;
+      if (ph === rh && pa === ra) pts = 3;
       else if (rGanador === pGanador) pts = 1;
       
-      let msg = pts === 2 ? '¡Marcador Exacto! +2 Pts' : (pts === 1 ? '¡Acertaste al ganador! +1 Pt' : 'No acertaste. 0 Pts');
+      let msg = pts === 3 ? '🏆 ¡Marcador Exacto! +3 Pts' : (pts === 1 ? '¡Acertaste al ganador! +1 Pt' : 'No acertaste. 0 Pts');
       feedbackHtml = `
         <div class="feedback-box pts-${pts}">
           Tu pronóstico: ${prono.golesLocal} - ${prono.golesVisitante} <br>
@@ -1391,6 +1385,45 @@ function fallbackShare() {
   } else {
     showToast('Tu navegador no soporta compartir directamente.', 'warning');
   }
+}
+
+// --- TIED USERS MODAL ---
+function openTiedUsersModal() {
+  const modal = document.getElementById('tied-users-modal');
+  const list = document.getElementById('tied-users-list');
+  if (!modal || !list) return;
+  
+  // Extraer empatados
+  list.innerHTML = '';
+  const tiedUsers = globalPodioData.filter(u => u.puntos === currentPoints && u.username !== currentUser);
+  
+  if (tiedUsers.length === 0) {
+    list.innerHTML = '<li style="padding: 10px; color: var(--text-color);">Nadie está empatado contigo en este momento.</li>';
+  } else {
+    tiedUsers.forEach(u => {
+      const li = document.createElement('li');
+      li.style.cssText = 'padding: 12px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;';
+      li.innerHTML = `<i class="fa-solid fa-user" style="color: var(--primary);"></i> <span style="color: var(--text-main); font-weight: 500;">${u.username}</span>`;
+      list.appendChild(li);
+    });
+  }
+  
+  modal.classList.remove('hidden');
+}
+
+function closeTiedUsersModal() {
+  const modal = document.getElementById('tied-users-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+// --- NOTIFICATIONS MODAL ---
+function openNotifsModal() {
+  const modal = document.getElementById('notifs-modal');
+  if (modal) modal.classList.remove('hidden');
+}
+function closeNotifsModal() {
+  const modal = document.getElementById('notifs-modal');
+  if (modal) modal.classList.add('hidden');
 }
 
 if (document.getElementById('btn-share-profile')) document.getElementById('btn-share-profile').addEventListener('click', shareApp);

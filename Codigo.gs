@@ -245,6 +245,17 @@ function recalcularTodosLosPuntos() {
   const sheetPronosticos = ss.getSheetByName('Pronosticos');
   const sheetUsuarios = ss.getSheetByName('Usuarios');
   
+  // --- RESPALDO AUTOMÁTICO DE SEGURIDAD ---
+  // Antes de tocar cualquier punto, creamos una copia de la hoja actual de usuarios.
+  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HH:mm");
+  const backupName = 'Usuarios_Backup_' + timestamp;
+  if (!ss.getSheetByName(backupName)) {
+    const backupSheet = sheetUsuarios.copyTo(ss);
+    backupSheet.setName(backupName);
+  }
+  // ----------------------------------------
+
+  
   // 1. Obtener todos los resultados reales terminados
   const resData = sheetResultados.getDataRange().getValues();
   const resultadosTerminados = {};
@@ -284,7 +295,7 @@ function recalcularTodosLosPuntos() {
       let pts = 0;
       
       if (pHome === real.hScore && pAway === real.aScore) {
-        pts = 2; // Marcador exacto
+        pts = 3; // Marcador exacto
       } else {
         const ganadorProno = pHome > pAway ? 1 : (pHome < pAway ? -1 : 0);
         if (ganadorProno === real.ganadorReal) {
