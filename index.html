@@ -144,12 +144,12 @@
 
       <header class="app-header">
         <div style="display:flex; align-items:center; gap: 15px;">
-          <button id="btn-header-streak" onclick="document.querySelector('[data-target=\'tab-podio\']').click()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #ff5722;" title="Ver Racha">
+          <button id="btn-header-streak" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #ff5722;" title="Ver Racha">
             <i class="fa-solid fa-fire"></i>
           </button>
-          <button id="btn-header-notifs" onclick="openNotifsModal()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--primary); position: relative;" title="Notificaciones">
+          <button id="btn-header-notifs" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--primary); position: relative;" title="Notificaciones">
             <i class="fa-solid fa-bell"></i>
-            <span style="position: absolute; top: -2px; right: -5px; background: red; width: 10px; height: 10px; border-radius: 50%;"></span>
+            <span id="notifs-badge" style="position: absolute; top: -2px; right: -5px; background: red; width: 10px; height: 10px; border-radius: 50%;"></span>
           </button>
           <span id="display-rank" style="font-size:0.85rem; color:black; padding:2px 8px; border-radius:12px; display:none; font-weight:800; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span>
         </div>
@@ -507,6 +507,15 @@
           <h4 style="color: #b8860b; margin-bottom: 5px;"><i class="fa-solid fa-star"></i> ¡Ahora ganarás más puntos!</h4>
           <p style="font-size: 0.95rem; color: var(--text-color);">Recompensaremos mejor a los verdaderos expertos. A partir de ahora, si le atinas al <strong>Marcador Exacto</strong> de un partido te llevarás <strong>+3 Puntos</strong> (antes 2). ¡El podio se va a poner bueno!</p>
         </div>
+
+        <div class="m-card" style="margin-bottom: 15px; border-left: 4px solid var(--primary); background: rgba(11, 87, 208, 0.05);">
+          <h4 style="color: var(--primary); margin-bottom: 5px;"><i class="fa-solid fa-bullhorn"></i> Mantente Informado</h4>
+          <p style="font-size: 0.95rem; color: var(--text-color);">A partir de ahora, usaremos esta pestaña para avisarte de todas las nuevas funciones, actualizaciones y cambios importantes en la Quiniela. ¡Revisa la campana seguido!</p>
+        </div>
+
+        <button id="btn-read-notifs" class="btn primary-btn" style="width: 100%; margin-top: 10px;">
+          <i class="fa-solid fa-check-double"></i> Marcar como leído
+        </button>
       </div>
     </div>
   </div>

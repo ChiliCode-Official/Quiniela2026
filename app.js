@@ -1406,7 +1406,8 @@ async function openTiedUsersModal() {
     list.innerHTML = '<li style="padding: 15px; text-align: center;"><i class="fa-solid fa-circle-notch fa-spin"></i> Cargando...</li>';
     modal.classList.remove('hide');
     try {
-      const data = await fetchApi({ action: 'getPodio' });
+      const res = await fetch(`${SCRIPT_URL}?action=getPodio`);
+      const data = await res.json();
       if (data.success) {
         globalPodioData = data.podio || [];
       }
@@ -1465,6 +1466,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const closeTiedBtn = document.getElementById('close-tied-btn');
   if (closeTiedBtn) closeTiedBtn.addEventListener('click', closeTiedUsersModal);
+
+  // Mark as read logic
+  const notifsBadge = document.getElementById('notifs-badge');
+  if (localStorage.getItem('quiniela_notifs_read') === 'true') {
+    if (notifsBadge) notifsBadge.style.display = 'none';
+  }
+  const btnReadNotifs = document.getElementById('btn-read-notifs');
+  if (btnReadNotifs) {
+    btnReadNotifs.addEventListener('click', () => {
+      localStorage.setItem('quiniela_notifs_read', 'true');
+      if (notifsBadge) notifsBadge.style.display = 'none';
+      closeNotifsModal();
+      showToast('Novedades marcadas como leídas', 'success');
+    });
+  }
+
+  // Clic fuera para cerrar
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.add('hide');
+    });
+  });
 });
 
 // --- STREAK (FUEGUITO) LOGIC ---
