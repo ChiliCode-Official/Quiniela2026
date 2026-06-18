@@ -489,7 +489,11 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 const authForm = document.getElementById('auth-form');
 const authMsg = document.getElementById('auth-msg');
 
-document.getElementById('btn-login').addEventListener('click', (e) => handleAuth(e, 'login'));
+authForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  handleAuth(e, 'login');
+});
+
 document.getElementById('btn-register').addEventListener('click', (e) => handleAuth(e, 'register'));
 
 async function handleAuth(e, action) {
