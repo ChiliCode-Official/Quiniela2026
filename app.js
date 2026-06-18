@@ -1572,8 +1572,8 @@ if (btnCloseStreak) {
 
 // Ensure checkStreak is called during initApp
 const originalInitApp = initApp;
-initApp = function() {
-  originalInitApp();
+initApp = async function() {
+  await originalInitApp();
   checkStreak();
 };
 
