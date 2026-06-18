@@ -1468,15 +1468,19 @@ document.addEventListener('DOMContentLoaded', () => {
   if (closeTiedBtn) closeTiedBtn.addEventListener('click', closeTiedUsersModal);
 
   // Mark as read logic
-  const notifsBadge = document.getElementById('notifs-badge');
-  if (localStorage.getItem('quiniela_notifs_read') === 'true') {
-    if (notifsBadge) notifsBadge.style.display = 'none';
-  }
+  const checkBadge = () => {
+    const badge = document.getElementById('notifs-badge');
+    if (badge && localStorage.getItem('quiniela_notifs_read') === 'true') {
+      badge.style.display = 'none';
+    }
+  };
+  checkBadge(); // Check on load
+  
   const btnReadNotifs = document.getElementById('btn-read-notifs');
   if (btnReadNotifs) {
     btnReadNotifs.addEventListener('click', () => {
       localStorage.setItem('quiniela_notifs_read', 'true');
-      if (notifsBadge) notifsBadge.style.display = 'none';
+      checkBadge();
       closeNotifsModal();
       showToast('Novedades marcadas como leídas', 'success');
     });
