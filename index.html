@@ -471,15 +471,24 @@
 
   <div id="toast" class="toast">Mensaje</div>
 
-  <!-- Tied Users Modal -->
+  <!-- Streak & Tied Users Modal -->
   <div id="tied-users-modal" class="modal-overlay hide">
-    <div class="modal-content m-card" style="width: 100%; max-width: 350px; position: relative;">
+    <div class="modal-content m-card" style="width: 100%; max-width: 380px; position: relative; padding: 25px;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
-        <h2 style="margin: 0; font-size: 1.2rem;">Empatados Contigo</h2>
-        <button class="close-btn" onclick="closeTiedUsersModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
+        <h2 style="margin: 0; font-size: 1.3rem; color: var(--primary);"><i class="fa-solid fa-fire" style="color: #ff5722;"></i> Tu Racha y Empates</h2>
+        <button class="close-btn" id="close-tied-btn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="modal-body" style="text-align: left; max-height: 60vh; overflow-y: auto;">
-        <ul id="tied-users-list" style="list-style: none; padding: 0; margin: 0;">
+      <div class="modal-body" style="text-align: left; max-height: 65vh; overflow-y: auto;">
+        
+        <div style="text-align: center; margin-bottom: 20px; padding: 15px; background: var(--surface-variant); border-radius: 12px;">
+          <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px;">Racha actual</p>
+          <div style="font-size: 2rem; font-weight: 800; color: #ff5722; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <i class="fa-solid fa-fire fa-beat"></i> <span id="modal-streak-count">0</span> Partidos
+          </div>
+        </div>
+
+        <h3 style="font-size: 1.1rem; margin-bottom: 10px; color: var(--text-main);">Empatados Contigo (<span id="modal-tied-pts">0</span> pts)</h3>
+        <ul id="tied-users-list" style="list-style: none; padding: 0; margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
           <!-- Usuarios inyectados por JS -->
         </ul>
       </div>

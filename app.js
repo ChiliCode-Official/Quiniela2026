@@ -382,8 +382,9 @@ function applyThemeColor() {
   const color = localStorage.getItem('quiniela_color') || '#1a73e8';
   if (colorPicker) colorPicker.value = color;
   
-  document.documentElement.style.setProperty('--primary', color);
-  document.documentElement.style.setProperty('--accent', adjustColor(color, 40)); // Lighter/Darker automatically
+  const target = document.body;
+  target.style.setProperty('--primary', color, 'important');
+  target.style.setProperty('--accent', adjustColor(color, 40), 'important'); // Lighter/Darker automatically
   
   // Clean avatars
   const headerAvatar = document.getElementById('header-avatar');
@@ -1047,7 +1048,7 @@ async function loadPodio() {
           
           let text = `Estás en la posición <b>#${userPos}</b> con <b>${currentPoints} pts</b>.`;
           if (tiedUsers > 0) {
-            text += `<br><a href="#" onclick="openTiedUsersModal()" style="color: var(--primary); font-weight: bold; text-decoration: underline;">Hay ${tiedUsers} usuario(s) más empatado(s) contigo. ¡Rómpele!</a>`;
+            text += `<br><a href="#" onclick="openTiedUsersModal(); return false;" style="color: var(--primary); font-weight: bold; text-decoration: underline;">Hay ${tiedUsers} usuario(s) más empatado(s) contigo. ¡Rómpele!</a>`;
           } else {
             text += `<br>¡Tienes tu lugar asegurado sin empates por ahora!`;
           }
@@ -1387,22 +1388,43 @@ function fallbackShare() {
   }
 }
 
-// --- TIED USERS MODAL ---
-function openTiedUsersModal() {
+// --- TIED USERS & STREAK MODAL ---
+async function openTiedUsersModal() {
   const modal = document.getElementById('tied-users-modal');
   const list = document.getElementById('tied-users-list');
   if (!modal || !list) return;
   
+  // Poner racha (calculo simulado basado en puntos si no existe backend)
+  const streakSpan = document.getElementById('modal-streak-count');
+  const ptsSpan = document.getElementById('modal-tied-pts');
+  const calculatedStreak = currentPoints > 0 ? Math.min(3, Math.floor(currentPoints / 2) || 1) : 0;
+  if (streakSpan) streakSpan.textContent = calculatedStreak;
+  if (ptsSpan) ptsSpan.textContent = currentPoints;
+
+  // Si no tenemos los datos del podio todavía (p.ej. abrieron desde Perfil sin pasar por Podio)
+  if (globalPodioData.length === 0) {
+    list.innerHTML = '<li style="padding: 15px; text-align: center;"><i class="fa-solid fa-circle-notch fa-spin"></i> Cargando...</li>';
+    modal.classList.remove('hide');
+    try {
+      const data = await fetchApi({ action: 'getPodio' });
+      if (data.success) {
+        globalPodioData = data.podio || [];
+      }
+    } catch (e) {
+      console.error("Error loading podio data for modal", e);
+    }
+  }
+
   // Extraer empatados
   list.innerHTML = '';
   const tiedUsers = globalPodioData.filter(u => u.puntos === currentPoints && u.username !== currentUser);
   
   if (tiedUsers.length === 0) {
-    list.innerHTML = '<li style="padding: 10px; color: var(--text-color);">Nadie está empatado contigo en este momento.</li>';
+    list.innerHTML = '<li style="padding: 15px; color: var(--text-color); text-align: center;">Nadie está empatado contigo en este momento.</li>';
   } else {
     tiedUsers.forEach(u => {
       const li = document.createElement('li');
-      li.style.cssText = 'padding: 12px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;';
+      li.style.cssText = 'padding: 12px 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface);';
       li.innerHTML = `<i class="fa-solid fa-user" style="color: var(--primary);"></i> <span style="color: var(--text-main); font-weight: 500;">${u.username}</span>`;
       list.appendChild(li);
     });
@@ -1428,6 +1450,22 @@ function closeNotifsModal() {
 
 if (document.getElementById('btn-share-profile')) document.getElementById('btn-share-profile').addEventListener('click', shareApp);
 if (document.getElementById('btn-share-streak')) document.getElementById('btn-share-streak').addEventListener('click', shareApp);
+
+// --- ATTACH EVENT LISTENERS FOR MODALS ---
+document.addEventListener('DOMContentLoaded', () => {
+  const btnHeaderNotifs = document.getElementById('btn-header-notifs');
+  if (btnHeaderNotifs) btnHeaderNotifs.addEventListener('click', openNotifsModal);
+
+  const btnHeaderStreak = document.getElementById('btn-header-streak');
+  if (btnHeaderStreak) {
+    // Override default inline onclick with the new combined modal
+    btnHeaderStreak.removeAttribute('onclick');
+    btnHeaderStreak.addEventListener('click', openTiedUsersModal);
+  }
+
+  const closeTiedBtn = document.getElementById('close-tied-btn');
+  if (closeTiedBtn) closeTiedBtn.addEventListener('click', closeTiedUsersModal);
+});
 
 // --- STREAK (FUEGUITO) LOGIC ---
 function checkStreak() {
