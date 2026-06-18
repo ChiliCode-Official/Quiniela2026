@@ -43,6 +43,7 @@ let localInputCache = {};
 let searchQueryQ = '';
 let stageFilterQ = 'all';
 let groupFilterQ = 'all';
+let pendingFilterQ = 'all'; // 'all' or 'pending'
 
 let searchQueryR = '';
 let stageFilterR = 'all';
@@ -756,6 +757,10 @@ function renderQuiniela() {
       if (matchGroup !== groupFilterQ) {
         return false;
       }
+    // 4. Filtro Solo Pendientes
+    if (pendingFilterQ === 'pending') {
+      const prono = userPredictions.find(p => p.partidoId == match.partidoId);
+      if (prono) return false;
     }
     
     return true;
@@ -1234,6 +1239,37 @@ document.getElementById('filter-group-q').addEventListener('change', (e) => {
   groupFilterQ = e.target.value;
   renderQuiniela();
 });
+
+const btnFilterQAll = document.getElementById('btn-filter-q-all');
+const btnFilterQPending = document.getElementById('btn-filter-q-pending');
+
+if (btnFilterQAll && btnFilterQPending) {
+  btnFilterQAll.addEventListener('click', () => {
+    pendingFilterQ = 'all';
+    btnFilterQAll.classList.add('active-filter');
+    btnFilterQPending.classList.remove('active-filter');
+    btnFilterQAll.style.background = 'rgba(11,87,208,0.1)';
+    btnFilterQAll.style.color = 'var(--primary)';
+    btnFilterQAll.style.border = '1px solid var(--primary)';
+    btnFilterQPending.style.background = 'var(--card-bg)';
+    btnFilterQPending.style.color = 'var(--text-color)';
+    btnFilterQPending.style.border = '1px solid var(--border)';
+    renderQuiniela();
+  });
+  
+  btnFilterQPending.addEventListener('click', () => {
+    pendingFilterQ = 'pending';
+    btnFilterQPending.classList.add('active-filter');
+    btnFilterQAll.classList.remove('active-filter');
+    btnFilterQPending.style.background = 'rgba(11,87,208,0.1)';
+    btnFilterQPending.style.color = 'var(--primary)';
+    btnFilterQPending.style.border = '1px solid var(--primary)';
+    btnFilterQAll.style.background = 'var(--card-bg)';
+    btnFilterQAll.style.color = 'var(--text-color)';
+    btnFilterQAll.style.border = '1px solid var(--border)';
+    renderQuiniela();
+  });
+}
 
 document.getElementById('search-r').addEventListener('input', (e) => {
   searchQueryR = e.target.value.toLowerCase().trim();
