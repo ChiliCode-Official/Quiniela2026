@@ -792,6 +792,7 @@ function renderQuiniela() {
       if (matchGroup !== groupFilterQ) {
         return false;
       }
+    }
     // 4. Filtro Solo Pendientes
     if (pendingFilterQ === 'pending') {
       const prono = userPredictions.find(p => p.partidoId == match.partidoId);
