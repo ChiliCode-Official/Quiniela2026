@@ -494,10 +494,18 @@ authForm.addEventListener('submit', (e) => {
   handleAuth(e, 'login');
 });
 
-document.getElementById('btn-register').addEventListener('click', (e) => handleAuth(e, 'register'));
+document.getElementById('btn-login').addEventListener('click', (e) => {
+  e.preventDefault();
+  handleAuth(e, 'login');
+});
+
+document.getElementById('btn-register').addEventListener('click', (e) => {
+  e.preventDefault();
+  handleAuth(e, 'register');
+});
 
 async function handleAuth(e, action) {
-  e.preventDefault();
+  if (e && e.preventDefault) e.preventDefault();
   const emailInput = document.getElementById('email').value.trim();
   const usernameInput = document.getElementById('username') ? document.getElementById('username').value.trim() : '';
   const passwordInputValue = document.getElementById('password').value;
