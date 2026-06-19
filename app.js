@@ -1547,44 +1547,42 @@ if (document.getElementById('btn-share-profile')) document.getElementById('btn-s
 if (document.getElementById('btn-share-streak')) document.getElementById('btn-share-streak').addEventListener('click', shareApp);
 
 // --- ATTACH EVENT LISTENERS FOR MODALS ---
-document.addEventListener('DOMContentLoaded', () => {
-  const btnHeaderNotifs = document.getElementById('btn-header-notifs');
-  if (btnHeaderNotifs) btnHeaderNotifs.addEventListener('click', openNotifsModal);
+const btnHeaderNotifs = document.getElementById('btn-header-notifs');
+if (btnHeaderNotifs) btnHeaderNotifs.addEventListener('click', openNotifsModal);
 
-  const btnHeaderStreak = document.getElementById('btn-header-streak');
-  if (btnHeaderStreak) {
-    // Override default inline onclick with the new combined modal
-    btnHeaderStreak.removeAttribute('onclick');
-    btnHeaderStreak.addEventListener('click', openTiedUsersModal);
+const btnHeaderStreak = document.getElementById('btn-header-streak');
+if (btnHeaderStreak) {
+  // Override default inline onclick with the new combined modal
+  btnHeaderStreak.removeAttribute('onclick');
+  btnHeaderStreak.addEventListener('click', openTiedUsersModal);
+}
+
+const closeTiedBtn = document.getElementById('close-tied-btn');
+if (closeTiedBtn) closeTiedBtn.addEventListener('click', closeTiedUsersModal);
+
+// Mark as read logic
+const checkBadge = () => {
+  const badge = document.getElementById('notifs-badge');
+  if (badge && localStorage.getItem('quiniela_notifs_read_v2') === 'true') {
+    badge.style.display = 'none';
   }
+};
+checkBadge(); // Check on load
 
-  const closeTiedBtn = document.getElementById('close-tied-btn');
-  if (closeTiedBtn) closeTiedBtn.addEventListener('click', closeTiedUsersModal);
+const btnReadNotifs = document.getElementById('btn-read-notifs');
+if (btnReadNotifs) {
+  btnReadNotifs.addEventListener('click', () => {
+    localStorage.setItem('quiniela_notifs_read_v2', 'true');
+    checkBadge();
+    closeNotifsModal();
+    showToast('Novedades marcadas como leídas', 'success');
+  });
+}
 
-  // Mark as read logic
-  const checkBadge = () => {
-    const badge = document.getElementById('notifs-badge');
-    if (badge && localStorage.getItem('quiniela_notifs_read_v2') === 'true') {
-      badge.style.display = 'none';
-    }
-  };
-  checkBadge(); // Check on load
-  
-  const btnReadNotifs = document.getElementById('btn-read-notifs');
-  if (btnReadNotifs) {
-    btnReadNotifs.addEventListener('click', () => {
-      localStorage.setItem('quiniela_notifs_read_v2', 'true');
-      checkBadge();
-      closeNotifsModal();
-      showToast('Novedades marcadas como leídas', 'success');
-    });
-  }
-
-  // Clic fuera para cerrar
-  document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.classList.add('hide');
-    });
+// Clic fuera para cerrar
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.add('hide');
   });
 });
 
