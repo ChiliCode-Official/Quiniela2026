@@ -446,7 +446,7 @@
     <div class="modal-content" style="text-align: center; max-width: 320px; border: 2px solid #ff9800; animation: slideUpSpring 0.5s ease forwards;">
       <h2 style="color: #ff9800; font-size: 2rem; margin-bottom: 10px;">¡Racha Activa!</h2>
       <i class="fa-solid fa-fire fa-beat" style="color: #ff9800; font-size: 5rem; margin: 20px 0; text-shadow: 0 0 20px rgba(255, 152, 0, 0.5);"></i>
-      <p style="font-size: 1.1rem; color: var(--text-main); font-weight: 600;">¡Has sumado puntos en los últimos 3 partidos seguidos!</p>
+      <p id="streak-modal-text" style="font-size: 1.1rem; color: var(--text-main); font-weight: 600;">¡Has sumado puntos en los últimos 3 partidos seguidos!</p>
       <p style="color: var(--text-muted); margin-top: 10px; font-size: 0.9rem;">Sigue así para dominar el Podio de la Notaría 134.</p>
       
       <button id="btn-share-streak" class="btn primary-btn" style="width: 100%; margin-top: 25px; background: #ff9800; border: none; font-weight: bold;">
@@ -496,10 +496,39 @@
           </div>
         </div>
 
+        <div id="streak-explanation" style="display: none; margin-bottom: 20px; padding: 15px; border-left: 4px solid #ff5722; background: rgba(255, 87, 34, 0.05); border-radius: 8px; font-size: 0.85rem; line-height: 1.4; color: var(--text-main);">
+          <i class="fa-solid fa-circle-info" style="color: #ff5722; margin-right: 5px;"></i>
+          <strong>¿Cómo funciona la racha?</strong><br>
+          Suma puntos (ya sea marcador exacto o ganador) en 3 o más partidos consecutivos finalizados para encender tu racha de fuego. ¡Si fallas un partido o no lo pronosticas, la racha vuelve a 0!
+        </div>
+
         <h3 style="font-size: 1.1rem; margin-bottom: 10px; color: var(--text-main);">Empatados Contigo (<span id="modal-tied-pts">0</span> pts)</h3>
         <ul id="tied-users-list" style="list-style: none; padding: 0; margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
           <!-- Usuarios inyectados por JS -->
         </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Streak Explanation Modal for 0 Streak Users -->
+  <div id="streak-info-modal" class="modal-overlay hide">
+    <div class="modal-content m-card" style="width: 100%; max-width: 350px; text-align: center; position: relative; padding: 25px; border: 2px solid #ff5722; animation: slideUpSpring 0.5s ease forwards;">
+      <h2 style="color: #ff5722; font-size: 1.5rem; margin-bottom: 15px;"><i class="fa-solid fa-fire"></i> Racha de Fuego</h2>
+      <i class="fa-solid fa-fire-flame-curved fa-bounce" style="color: #ff5722; font-size: 4.5rem; margin: 15px 0; text-shadow: 0 0 15px rgba(255, 87, 34, 0.4);"></i>
+      <h3 style="font-size: 1.15rem; color: var(--text-main); margin-bottom: 12px; font-weight: 600;">¿Cómo funciona la racha?</h3>
+      <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.4; text-align: left; margin-bottom: 15px;">
+        Suma puntos (ya sea por marcador exacto o por acertar el ganador/empate) en <b>3 o más partidos consecutivos finalizados</b> para encender tu racha de fuego.
+      </p>
+      <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; text-align: left; background: var(--surface-variant); padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+        <i class="fa-solid fa-circle-info" style="color: #ff5722; margin-right: 4px;"></i> Si fallas el pronóstico de un partido o no lo registras a tiempo, ¡tu racha volverá a 0!
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button id="btn-close-streak-info" class="btn primary-btn" style="background: #ff5722; color: white; border: none; font-weight: bold; width: 100%; padding: 12px 16px;">
+          ¡Entendido!
+        </button>
+        <button id="btn-show-ties-anyway" class="btn" style="background: var(--surface-variant); color: var(--text-main); border: none; font-size: 0.9rem; width: 100%; padding: 12px 16px;">
+          Ver empatados conmigo
+        </button>
       </div>
     </div>
   </div>
