@@ -461,7 +461,8 @@ if (savedEmail && savedPass) {
 async function autoLogin(email, pass) {
   try {
     const queryParams = new URLSearchParams({ action: 'login', email: email, password: pass }).toString();
-    const res = await fetch(`${SCRIPT_URL}?${queryParams}`);
+    // redirect: 'follow' es necesario para las redirecciones 302 de Google Apps Script
+    const res = await fetch(`${SCRIPT_URL}?${queryParams}`, { redirect: 'follow' });
     const data = await res.json();
     document.getElementById('loading-overlay').classList.add('hide');
     if (data.success) {
@@ -474,8 +475,11 @@ async function autoLogin(email, pass) {
       localStorage.removeItem('quiniela_pass');
     }
   } catch (e) {
+    console.error('Auto-login error:', e);
     document.getElementById('loading-overlay').classList.add('hide');
-    showToast('Error de conexión automático.', 'error');
+    showToast('Sin conexión. Verifica tu internet.', 'error');
+    localStorage.removeItem('quiniela_email');
+    localStorage.removeItem('quiniela_pass');
   }
 }
 
@@ -489,23 +493,34 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 const authForm = document.getElementById('auth-form');
 const authMsg = document.getElementById('auth-msg');
 
+// IMPORTANTE: Solo usamos UN listener por acción para evitar doble ejecución.
+// El form tiene type="submit" en btn-login, pero lo manejamos solo con el click
+// del botón para evitar que el submit del form también dispare el handler.
 authForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  handleAuth(e, 'login');
+  e.stopPropagation();
+  // No hacemos nada aquí — el click de btn-login ya lo maneja
 });
+
+let _authInProgress = false; // Bandera para evitar doble submit
 
 document.getElementById('btn-login').addEventListener('click', (e) => {
   e.preventDefault();
-  handleAuth(e, 'login');
+  e.stopPropagation();
+  if (_authInProgress) return;
+  handleAuth('login');
 });
 
 document.getElementById('btn-register').addEventListener('click', (e) => {
   e.preventDefault();
-  handleAuth(e, 'register');
+  e.stopPropagation();
+  if (_authInProgress) return;
+  handleAuth('register');
 });
 
-async function handleAuth(e, action) {
-  if (e && e.preventDefault) e.preventDefault();
+async function handleAuth(action) {
+  if (_authInProgress) return;
+  
   const emailInput = document.getElementById('email').value.trim();
   const usernameInput = document.getElementById('username') ? document.getElementById('username').value.trim() : '';
   const passwordInputValue = document.getElementById('password').value;
@@ -526,14 +541,22 @@ async function handleAuth(e, action) {
     }
   }
   
+  _authInProgress = true;
   document.getElementById('loading-overlay').classList.remove('hide');
   
   try {
     const queryParams = new URLSearchParams({ action, email: emailInput, username: usernameInput, password: passwordInputValue }).toString();
-    const res = await fetch(`${SCRIPT_URL}?${queryParams}`);
+    // redirect: 'follow' es necesario porque Google Apps Script usa redirecciones 302
+    const res = await fetch(`${SCRIPT_URL}?${queryParams}`, { redirect: 'follow' });
+    
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    
     const data = await res.json();
     
     document.getElementById('loading-overlay').classList.add('hide');
+    _authInProgress = false;
     
     if (data.success) {
       if (action === 'login') {
@@ -548,11 +571,18 @@ async function handleAuth(e, action) {
         authMsg.style.color = 'var(--success)';
       }
     } else {
-      showToast(data.message, 'error');
+      showToast(data.message || 'Credenciales incorrectas', 'error');
+      authMsg.textContent = data.message || 'Credenciales incorrectas';
+      authMsg.style.color = 'var(--danger)';
     }
   } catch (error) {
     document.getElementById('loading-overlay').classList.add('hide');
-    showToast('Error de conexión. Revisa tu internet.', 'error');
+    _authInProgress = false;
+    console.error('Auth error:', error);
+    // Si el backend respondió con algo (incluso en error), intentar parsear
+    showToast('Error de conexión con el servidor. Verifica tu internet e intenta de nuevo.', 'error');
+    authMsg.textContent = 'No se pudo conectar al servidor. Intenta de nuevo.';
+    authMsg.style.color = 'var(--danger)';
   }
 }
 
