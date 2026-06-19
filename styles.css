@@ -219,6 +219,13 @@ h1, h2, h3 { font-weight: 600; }
   background: var(--surface);
 }
 
+/* Ocultar el botón de revelado de contraseña nativo de los navegadores (como Edge) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+
 .btn {
   width: 100%;
   padding: 16px;

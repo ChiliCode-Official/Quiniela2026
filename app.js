@@ -493,18 +493,11 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 const authForm = document.getElementById('auth-form');
 const authMsg = document.getElementById('auth-msg');
 
-// IMPORTANTE: Solo usamos UN listener por acción para evitar doble ejecución.
-// El form tiene type="submit" en btn-login, pero lo manejamos solo con el click
-// del botón para evitar que el submit del form también dispare el handler.
-authForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  // No hacemos nada aquí — el click de btn-login ya lo maneja
-});
-
 let _authInProgress = false; // Bandera para evitar doble submit
 
-document.getElementById('btn-login').addEventListener('click', (e) => {
+// Manejamos el submit del formulario para procesar el login de forma unificada
+// Esto previene recargas al dar Enter en los inputs y al hacer clic en "Entrar" (type="submit")
+authForm.addEventListener('submit', (e) => {
   e.preventDefault();
   e.stopPropagation();
   if (_authInProgress) return;
