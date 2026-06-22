@@ -23,10 +23,6 @@
 </head>
 <body data-theme="light">
 
-  <button class="theme-toggle" id="theme-btn">
-    <i class="fa-solid fa-moon"></i>
-  </button>
-
   <!-- Watermarks PC (Left) -->
   <aside class="watermark-side left">
     <a href="https://chilicode-official.github.io/ChiliCode/" target="_blank">
@@ -218,6 +214,7 @@
         <div class="filter-pills" style="display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px;">
           <button id="btn-filter-q-all" class="m-btn secondary active-filter" style="border-radius: 20px; padding: 5px 15px; font-size: 0.9rem; flex-shrink: 0; border: 1px solid var(--primary); background: rgba(11,87,208,0.1); color: var(--primary);">Todos</button>
           <button id="btn-filter-q-pending" class="m-btn secondary" style="border-radius: 20px; padding: 5px 15px; font-size: 0.9rem; flex-shrink: 0; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-color);">Solo Pendientes</button>
+          <button id="btn-filter-q-today" class="m-btn secondary" style="border-radius: 20px; padding: 5px 15px; font-size: 0.9rem; flex-shrink: 0; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-color);">Hoy 📅</button>
         </div>
 
         <div id="quiniela-list" class="cards-container">
@@ -236,6 +233,11 @@
           <div style="font-size: 2.5rem; color: #ff6b6b;"><i class="fa-solid fa-fire-flame-curved fa-bounce"></i></div>
           <h4 style="margin-top: 10px; color: var(--text-main);">Tu Desempeño</h4>
           <p id="podio-stats-text" style="color: var(--text-muted); margin-top: 5px; font-size: 0.95rem;"></p>
+        </div>
+
+        <div class="search-box m-card" style="margin-bottom: 20px; padding: 10px 15px; display: flex; align-items: center; position: relative;">
+          <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 25px; color: var(--text-muted);"></i>
+          <input type="text" id="search-podio" placeholder="Buscar compañero en la tabla..." autocomplete="off" style="width: 100%; padding: 10px 10px 10px 40px; background: var(--surface-variant); border: 2px solid transparent; border-radius: var(--radius-md); color: var(--text-main); font-size: 0.95rem; outline: none; transition: all 0.3s;">
         </div>
 
         <div class="m-card" style="padding: 0;">
@@ -303,6 +305,7 @@
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-check text-yellow" style="width: 25px;"></i> <b>Acierto Resultado (1 Punto):</b> Acertar qué equipo gana o si hay empate, sin atinarle al marcador.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-xmark text-red" style="width: 25px;"></i> <b>Fallo (0 Puntos):</b> No acertar el ganador ni el empate.</li>
             <li style="margin-bottom: 15px;"><i class="fa-solid fa-clock text-primary" style="width: 25px;"></i> <b>Cierre:</b> Tienes hasta las 11:59 PM de un día antes del partido para enviar tus resultados. Se bloquean en la madrugada del día de juego.</li>
+            <li style="margin-bottom: 15px;"><i class="fa-solid fa-circle-info text-primary" style="width: 25px;"></i> <b>Leyenda de Rendimiento:</b> En los detalles de partido, los círculos muestran la forma reciente: <span class="form-circle win" style="display: inline-flex; vertical-align: middle; margin: 0 2px;">V</span> Victoria, <span class="form-circle draw" style="display: inline-flex; vertical-align: middle; margin: 0 2px;">E</span> Empate y <span class="form-circle loss" style="display: inline-flex; vertical-align: middle; margin: 0 2px;">D</span> Derrota.</li>
           </ul>
           
           <button id="btn-tutorial-reglas" class="btn primary-btn" style="width: 100%; margin-top: 20px;">
@@ -325,12 +328,33 @@
         </div>
 
         <div class="m-card" style="margin-top: 20px;">
-          <h4 style="margin-bottom: 15px; color: var(--text-color); border-bottom: 1px solid var(--border); padding-bottom: 8px;">Personaliza tu Avatar</h4>
+          <h4 style="margin-bottom: 15px; color: var(--text-color); border-bottom: 1px solid var(--border); padding-bottom: 8px;">Personalización y Apariencia</h4>
           <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
             <input type="color" id="theme-color-picker" value="#1a73e8" style="width: 50px; height: 50px; border: none; border-radius: 10px; cursor: pointer; padding: 0; background: none;">
             <div style="flex: 1;">
               <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);">Color de tu App</div>
               <div style="font-size: 0.9rem; color: var(--text-color);">Elige tu tono favorito y toda la quiniela se adaptará a tu estilo.</div>
+            </div>
+          </div>
+          <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; display: flex; align-items: center; gap: 15px;">
+            <div class="select-wrapper" style="flex: 1;">
+              <i class="fa-solid fa-flag" style="color: var(--text-muted);"></i>
+              <select id="profile-team-select" style="padding-left: 36px;">
+                <option value="">Sin equipo (Avatar Gris)</option>
+              </select>
+            </div>
+            <div style="flex: 1.2;">
+              <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);">Tu Selección Favorita</div>
+              <div style="font-size: 0.9rem; color: var(--text-color);">La bandera del país elegido se convertirá en tu avatar de perfil.</div>
+            </div>
+          </div>
+          <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; display: flex; align-items: center; gap: 15px;">
+            <button id="theme-btn" class="btn secondary-btn" style="flex: 1; padding: 10px 15px; font-size: 0.9rem; border-radius: 12px; width: auto; margin-bottom: 0;">
+              <i class="fa-solid fa-moon"></i> Modo Oscuro
+            </button>
+            <div style="flex: 1.2;">
+              <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);">Tema de la App</div>
+              <div style="font-size: 0.9rem; color: var(--text-color);">Cambia entre el modo claro y oscuro para cuidar tu vista.</div>
             </div>
           </div>
         </div>
@@ -541,8 +565,16 @@
         <h2 style="margin: 0; font-size: 1.2rem;">Novedades de la App</h2>
         <button class="close-btn" onclick="closeNotifsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="modal-body" style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 20px;">
         <div id="dynamic-notifs-section" style="margin-bottom: 15px;"></div>
+        <div class="m-card" style="margin-bottom: 15px; border-left: 4px solid #FF5722; background: rgba(255, 87, 34, 0.05); box-shadow: none; border-radius: 12px;">
+          <h4 style="color: #FF5722; margin-bottom: 5px;"><i class="fa-solid fa-wand-magic-sparkles"></i> ¡Nuevas Funciones Premium!</h4>
+          <p style="font-size: 0.95rem; color: var(--text-color); margin: 0; line-height: 1.4;">¡Hemos agregado excelentes funciones a tu Quiniela!
+          <br>1. <b>Avatar de Selección</b>: Elige tu equipo en <b>Perfil</b> y su bandera reemplazará tu avatar.
+          <br>2. <b>Confeti Temático</b>: ¡El confeti de victoria brillará con los colores de tu selección!
+          <br>3. <b>Filtro de Hoy 📅</b>: Mira los partidos del día en tu panel de quiniela.
+          <br>4. <b>Buscador en Podio 🔍</b>: Encuentra compañeros de oficina en segundos.
+          <br><br><strong>💡 Por favor, revisa la página de "Perfil" para configurar tu selección favorita y ver lo nuevo.</strong></p>
+        </div>
         <div class="m-card" style="margin-bottom: 15px; border-left: 4px solid #4CAF50; background: rgba(76, 175, 80, 0.05);">
           <h4 style="color: #388E3C; margin-bottom: 5px;"><i class="fa-solid fa-wrench"></i> ¡Historial y Puntos Recuperados!</h4>
           <p style="font-size: 0.95rem; color: var(--text-color);">¿Veías un error de <strong>"Sin pronóstico registrado"</strong> en los primeros partidos a pesar de haber participado? ¡Ya está arreglado! Ahora podrás ver tus cajitas de resultados correctamente en la pestaña de <strong>Resultados</strong>, y tu puntaje oficial en el Podio ha sido actualizado incluyendo todos esos puntos perdidos.</p>

@@ -217,23 +217,25 @@ const themeBtn = document.getElementById('theme-btn');
 const body = document.body;
 const savedTheme = localStorage.getItem('theme') || 'light';
 body.setAttribute('data-theme', savedTheme);
-updateThemeIcon(savedTheme);
-
-themeBtn.addEventListener('click', () => {
-  const currentTheme = body.getAttribute('data-theme');
-  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-  body.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-  updateThemeIcon(newTheme);
-  
-  // Re-apply theme color logic
-  if (typeof applyThemeColor === 'function') {
-    applyThemeColor();
-  }
-});
+if (themeBtn) {
+  updateThemeIcon(savedTheme);
+  themeBtn.addEventListener('click', () => {
+    const currentTheme = body.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    body.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+    
+    // Re-apply theme color logic
+    if (typeof applyThemeColor === 'function') {
+      applyThemeColor();
+    }
+  });
+}
 
 function updateThemeIcon(theme) {
-  themeBtn.innerHTML = theme === 'light' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>';
+  if (!themeBtn) return;
+  themeBtn.innerHTML = theme === 'light' ? '<i class="fa-solid fa-moon"></i> Modo Oscuro' : '<i class="fa-solid fa-sun"></i> Modo Claro';
 }
 
 // --- PWA SETUP ---
@@ -401,6 +403,59 @@ if (colorPicker) {
   });
 }
 
+// --- FAVORITE TEAM AVATAR LOGIC ---
+function applyUserAvatar() {
+  if (!currentUser) return;
+  const favTeam = localStorage.getItem(`quiniela_fav_team_${currentUser}`) || '';
+  
+  const teamSelect = document.getElementById('profile-team-select');
+  if (teamSelect) teamSelect.value = favTeam;
+
+  const headerAvatar = document.getElementById('header-avatar');
+  const profileAvatar = document.getElementById('profile-avatar-large');
+
+  if (favTeam && flagMap[favTeam]) {
+    const flagCode = flagMap[favTeam];
+    const flagUrl = `https://flagcdn.com/w160/${flagCode}.png`;
+    
+    if (headerAvatar) {
+      headerAvatar.innerHTML = `<img src="${flagUrl}" alt="${favTeam}">`;
+    }
+    if (profileAvatar) {
+      profileAvatar.innerHTML = `<img src="${flagUrl}" alt="${favTeam}">`;
+    }
+  } else {
+    if (headerAvatar) {
+      headerAvatar.innerHTML = `<i class="fa-solid fa-user"></i>`;
+    }
+    if (profileAvatar) {
+      profileAvatar.innerHTML = `<i class="fa-solid fa-user"></i>`;
+    }
+  }
+}
+
+function populateTeamSelect() {
+  const teamSelect = document.getElementById('profile-team-select');
+  if (!teamSelect) return;
+  
+  if (teamSelect.options.length > 1) return; // Ya se cargó
+  
+  const teams = Object.keys(flagMap).sort();
+  teams.forEach(team => {
+    const opt = document.createElement('option');
+    opt.value = team;
+    opt.textContent = team;
+    teamSelect.appendChild(opt);
+  });
+
+  teamSelect.addEventListener('change', (e) => {
+    if (!currentUser) return;
+    const selectedTeam = e.target.value;
+    localStorage.setItem(`quiniela_fav_team_${currentUser}`, selectedTeam);
+    applyUserAvatar();
+  });
+}
+
 // --- NAVEGACIÓN ---
 const navItems = document.querySelectorAll('.nav-item, .nav-item-btn');
 const tabs = document.querySelectorAll('.tab-content');
@@ -413,6 +468,8 @@ function handleNavigation(e) {
 
   e.preventDefault();
   e.stopPropagation();
+
+  if (navigator.vibrate) navigator.vibrate(12); // Vibración sutil táctil al cambiar de pestaña
 
   // 1. Feedback Visual Inmediato
   navItems.forEach(nav => nav.classList.remove('active'));
@@ -649,6 +706,8 @@ async function initApp() {
   if (credEmail) credEmail.value = localStorage.getItem('quiniela_email') || 'Oculto';
 
   applyThemeColor();
+  populateTeamSelect();
+  applyUserAvatar();
   
   // Solicitar permiso de notificaciones
   if ('Notification' in window && Notification.permission === 'default') {
@@ -708,11 +767,42 @@ async function loadUserRankAndConfetti() {
       
       if (currentPoints > lastPoints && !hasShownConfetti) {
         hasShownConfetti = true;
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200, 50, 300]); // Vibración rítmica festiva
+        
+        const teamColors = {
+          'México': ['#006847', '#ffffff', '#CE1126'],
+          'Argentina': ['#74ACDF', '#ffffff', '#F6B40E'],
+          'Brasil': ['#009B3A', '#FEDF00', '#002776'],
+          'Alemania': ['#000000', '#DD0000', '#FFCC00'],
+          'España': ['#AD1519', '#FABD00'],
+          'Francia': ['#002395', '#ffffff', '#ED2939'],
+          'Estados Unidos': ['#3C3B6E', '#ffffff', '#B22234'],
+          'Canadá': ['#FF0000', '#ffffff'],
+          'Uruguay': ['#0081C6', '#ffffff', '#FCD116'],
+          'Portugal': ['#006600', '#FF0000', '#FFFF00'],
+          'Inglaterra': ['#FF0000', '#ffffff'],
+          'Países Bajos': ['#21468B', '#ffffff', '#AE1C28', '#FF4F00'],
+          'Bélgica': ['#000000', '#FDDA24', '#EF3340'],
+          'Colombia': ['#FCD116', '#003893', '#CE1126'],
+          'Marruecos': ['#C1272D', '#006233'],
+          'Japón': ['#ffffff', '#BC002D'],
+          'Corea del Sur': ['#ffffff', '#CD2E3A', '#0A2540'],
+          'Australia': ['#000031', '#ffffff', '#CC3333'],
+          'Croacia': ['#FF0000', '#ffffff', '#000099']
+        };
+
+        const favTeam = localStorage.getItem(`quiniela_fav_team_${currentUser}`) || '';
+        let colors = ['#0b57d0', '#1ea362', '#e37400', '#b3261e']; // Colores por defecto
+        if (favTeam && teamColors[favTeam]) {
+          colors = teamColors[favTeam];
+        }
+
         if (window.confetti) {
           confetti({
             particleCount: 150,
             spread: 80,
             origin: { y: 0.6 },
+            colors: colors,
             zIndex: 9999
           });
         }
@@ -1056,11 +1146,19 @@ function renderQuiniela() {
       if (matchGroup !== groupFilterQ) {
         return false;
       }
-    }
-    // 4. Filtro Solo Pendientes
+    // 4. Filtro Solo Pendientes y Hoy
     if (pendingFilterQ === 'pending') {
       const prono = userPredictions.find(p => p.partidoId == match.partidoId);
       if (prono) return false;
+    } else if (pendingFilterQ === 'today') {
+      if (!match.date) return false;
+      const matchDate = safeNewDate(match.date);
+      const today = new Date();
+      if (matchDate.getFullYear() !== today.getFullYear() ||
+          matchDate.getMonth() !== today.getMonth() ||
+          matchDate.getDate() !== today.getDate()) {
+        return false;
+      }
     }
     
     return true;
@@ -1111,6 +1209,10 @@ function renderQuiniela() {
     const matchDate = match.date ? safeNewDate(match.date) : null;
     const lockTime = matchDate ? new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0) : null;
     const isLocked = lockTime && now >= lockTime;
+
+    // Calcular si le quedan menos de 12 horas para cerrar y no ha sido pronosticado
+    const hoursLeft = lockTime ? (lockTime.getTime() - now.getTime()) / (1000 * 60 * 60) : 999;
+    const isUrgent = !isLocked && lockTime && hoursLeft > 0 && hoursLeft <= 12 && (pLocal === '' || pVisit === '');
     
     const localCode = flagMap[match.equipoLocal] || 'un';
     const visitCode = flagMap[match.equipoVisitante] || 'un';
@@ -1146,9 +1248,18 @@ function renderQuiniela() {
     }
     
     const div = document.createElement('div');
-    div.className = isLocked ? 'm-card match-card locked-card' : 'm-card match-card';
+    let cardClass = 'm-card match-card';
+    if (isLocked) {
+      cardClass += ' locked-card';
+    } else if (isUrgent) {
+      cardClass += ' urgent-card';
+    }
+    div.className = cardClass;
+    
+    const urgentBadge = isUrgent ? `<span class="urgent-badge-label"><i class="fa-solid fa-clock fa-fade"></i> ¡Cierra pronto!</span>` : '';
     
     div.innerHTML = `
+      ${urgentBadge}
       <div class="match-header">
         <span>COPA DE FÚTBOL</span>
         <span class="match-date">${match.date ? new Date(match.date).toLocaleString('es-MX', {day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'}) : 'Por definir'}</span>
@@ -1345,11 +1456,18 @@ window.savePrediction = async function(partidoId, btn) {
 }
 
 let globalPodioData = [];
+let podioSearchQuery = '';
 
 async function loadPodio() {
   const container = document.getElementById('podio-list');
+  if (!container) return;
   
-  // Cargamos los datos reales del servidor para todos los usuarios
+  // Si ya tenemos datos y el contenedor tiene elementos, renderizamos de inmediato para mayor velocidad
+  if (globalPodioData.length > 0 && container.innerHTML !== '') {
+    renderPodioList();
+    return;
+  }
+  
   container.innerHTML = `
     <div style="text-align:center; padding: 40px; color: var(--primary);">
       <i class="fa-solid fa-futbol fa-bounce fa-3x"></i>
@@ -1363,31 +1481,16 @@ async function loadPodio() {
     
     if (data.success) {
       globalPodioData = data.podio || [];
-      container.innerHTML = '';
-      if (data.podio.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <i class="fa-solid fa-ranking-star"></i>
-            <h3>Aún no hay puntos</h3>
-            <p style="margin-top: 10px;">¡Comienza a llenar tu quiniela!</p>
-          </div>
-        `;
-        return;
-      }
-      
-      // Solo mostramos los primeros 15 lugares para el administrador
-      const top10 = data.podio.slice(0, 15);
       
       // Mostrar estadísticas del usuario actual
       const statsBox = document.getElementById('podio-stats-box');
       const statsText = document.getElementById('podio-stats-text');
       
       if (statsBox && statsText && currentUser && currentPoints > 0) {
-        // Encontrar posición del usuario en TODO el podio
-        const userIndex = data.podio.findIndex(u => u.username === currentUser);
+        const userIndex = globalPodioData.findIndex(u => u.username === currentUser);
         if (userIndex !== -1) {
           const userPos = userIndex + 1;
-          const tiedUsers = data.podio.filter(u => u.puntos === currentPoints).length - 1;
+          const tiedUsers = globalPodioData.filter(u => u.puntos === currentPoints).length - 1;
           
           let text = `Estás en la posición <b>#${userPos}</b> con <b>${currentPoints} pts</b>.`;
           if (tiedUsers > 0) {
@@ -1401,27 +1504,69 @@ async function loadPodio() {
         }
       }
       
-      top10.forEach((user, index) => {
-        const topClass = index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : '';
-        const icon = index === 0 ? '<i class="fa-solid fa-crown"></i>' : (index + 1);
-        
-        container.innerHTML += `
-          <div class="rank-item ${topClass}" style="animation-delay: ${index * 0.05}s;">
-            <div class="rank-pos">${icon}</div>
-            <div class="rank-user">${user.username}</div>
-            <div class="rank-pts">${user.puntos} pts</div>
-          </div>
-        `;
-      });
-      
-      container.innerHTML += `
-        <div style="text-align:center; padding: 15px; font-size: 0.8rem; color: var(--text-muted);">
-          <i class="fa-solid fa-lock"></i> Vista exclusiva de Administrador (Top 10)
-        </div>
-      `;
+      renderPodioList();
     }
   } catch (error) {
     container.innerHTML = '<div style="padding:15px; text-align:center; color:var(--danger);">Error cargando podio.</div>';
+  }
+}
+
+function renderPodioList() {
+  const container = document.getElementById('podio-list');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  if (globalPodioData.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <i class="fa-solid fa-ranking-star"></i>
+        <h3>Aún no hay puntos</h3>
+        <p style="margin-top: 10px;">¡Comienza a llenar tu quiniela!</p>
+      </div>
+    `;
+    return;
+  }
+  
+  const filtered = globalPodioData.filter(user => {
+    return user.username.toLowerCase().includes(podioSearchQuery);
+  });
+  
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 30px; text-align: center; color: var(--text-muted);">
+        <i class="fa-regular fa-face-frown" style="font-size: 2.5rem; margin-bottom: 10px; display: block;"></i>
+        No se encontraron compañeros con ese nombre.
+      </div>
+    `;
+    return;
+  }
+  
+  const isFiltered = podioSearchQuery !== '';
+  // Si no está filtrado, sólo mostramos el top 15. Si está filtrado, mostramos todos los que coincidan.
+  const listToRender = isFiltered ? filtered : filtered.slice(0, 15);
+  
+  listToRender.forEach((user, index) => {
+    // Buscar posición real en la lista completa sin filtrar
+    const originalIndex = globalPodioData.findIndex(u => u.username === user.username);
+    const rank = originalIndex + 1;
+    const topClass = originalIndex === 0 ? 'top-1' : originalIndex === 1 ? 'top-2' : originalIndex === 2 ? 'top-3' : '';
+    const icon = originalIndex === 0 ? '<i class="fa-solid fa-crown"></i>' : rank;
+    
+    container.innerHTML += `
+      <div class="rank-item ${topClass}" style="animation-delay: ${index * 0.05}s;">
+        <div class="rank-pos">${icon}</div>
+        <div class="rank-user">${user.username}</div>
+        <div class="rank-pts">${user.puntos} pts</div>
+      </div>
+    `;
+  });
+  
+  if (!isFiltered) {
+    container.innerHTML += `
+      <div style="text-align:center; padding: 15px; font-size: 0.8rem; color: var(--text-muted);">
+        <i class="fa-solid fa-lock"></i> Vista de los mejores 15 participantes
+      </div>
+    `;
   }
 }
 
@@ -1579,18 +1724,23 @@ document.getElementById('filter-group-q').addEventListener('change', (e) => {
 
 const btnFilterQAll = document.getElementById('btn-filter-q-all');
 const btnFilterQPending = document.getElementById('btn-filter-q-pending');
+const btnFilterQToday = document.getElementById('btn-filter-q-today');
 
-if (btnFilterQAll && btnFilterQPending) {
+if (btnFilterQAll && btnFilterQPending && btnFilterQToday) {
   btnFilterQAll.addEventListener('click', () => {
     pendingFilterQ = 'all';
     btnFilterQAll.classList.add('active-filter');
     btnFilterQPending.classList.remove('active-filter');
+    btnFilterQToday.classList.remove('active-filter');
     btnFilterQAll.style.background = 'rgba(11,87,208,0.1)';
     btnFilterQAll.style.color = 'var(--primary)';
     btnFilterQAll.style.border = '1px solid var(--primary)';
     btnFilterQPending.style.background = 'var(--card-bg)';
     btnFilterQPending.style.color = 'var(--text-color)';
     btnFilterQPending.style.border = '1px solid var(--border)';
+    btnFilterQToday.style.background = 'var(--card-bg)';
+    btnFilterQToday.style.color = 'var(--text-color)';
+    btnFilterQToday.style.border = '1px solid var(--border)';
     renderQuiniela();
   });
   
@@ -1598,20 +1748,49 @@ if (btnFilterQAll && btnFilterQPending) {
     pendingFilterQ = 'pending';
     btnFilterQPending.classList.add('active-filter');
     btnFilterQAll.classList.remove('active-filter');
+    btnFilterQToday.classList.remove('active-filter');
     btnFilterQPending.style.background = 'rgba(11,87,208,0.1)';
     btnFilterQPending.style.color = 'var(--primary)';
     btnFilterQPending.style.border = '1px solid var(--primary)';
     btnFilterQAll.style.background = 'var(--card-bg)';
     btnFilterQAll.style.color = 'var(--text-color)';
     btnFilterQAll.style.border = '1px solid var(--border)';
+    btnFilterQToday.style.background = 'var(--card-bg)';
+    btnFilterQToday.style.color = 'var(--text-color)';
+    btnFilterQToday.style.border = '1px solid var(--border)';
+    renderQuiniela();
+  });
+
+  btnFilterQToday.addEventListener('click', () => {
+    pendingFilterQ = 'today';
+    btnFilterQToday.classList.add('active-filter');
+    btnFilterQAll.classList.remove('active-filter');
+    btnFilterQPending.classList.remove('active-filter');
+    btnFilterQToday.style.background = 'rgba(11,87,208,0.1)';
+    btnFilterQToday.style.color = 'var(--primary)';
+    btnFilterQToday.style.border = '1px solid var(--primary)';
+    btnFilterQAll.style.background = 'var(--card-bg)';
+    btnFilterQAll.style.color = 'var(--text-color)';
+    btnFilterQAll.style.border = '1px solid var(--border)';
+    btnFilterQPending.style.background = 'var(--card-bg)';
+    btnFilterQPending.style.color = 'var(--text-color)';
+    btnFilterQPending.style.border = '1px solid var(--border)';
     renderQuiniela();
   });
 }
 
 document.getElementById('search-r').addEventListener('input', (e) => {
-  searchQueryR = e.target.value.toLowerCase().trim();
-  renderResultados();
-});
+    searchQueryR = e.target.value.toLowerCase().trim();
+    renderResultados();
+  });
+
+  const searchPodioInput = document.getElementById('search-podio');
+  if (searchPodioInput) {
+    searchPodioInput.addEventListener('input', (e) => {
+      podioSearchQuery = e.target.value.toLowerCase().trim();
+      renderPodioList();
+    });
+  }
 
 document.getElementById('filter-stage-r').addEventListener('change', (e) => {
   stageFilterR = e.target.value;
@@ -1910,6 +2089,14 @@ function openNotifsModal() {
           </div>
         `;
       }
+
+      // 4. Alerta de Novedades incitando a ir al perfil
+      dynSection.innerHTML += `
+        <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid #9c27b0; background: rgba(156, 39, 176, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
+          <h5 style="color: #9c27b0; margin-bottom: 4px; font-weight: 700; font-size: 0.9rem;"><i class="fa-solid fa-wand-magic-sparkles"></i> ¡Avatar y Confeti de tu Selección!</h5>
+          <p style="font-size: 0.85rem; color: var(--text-main); margin: 0;">¡Ya puedes personalizar tu perfil! Elige tu equipo en la pestaña de <strong>Perfil</strong> y el confeti y tu avatar brillarán con sus colores oficiales. ¡Pruébalo ahora!</p>
+        </div>
+      `;
     }
   }
 }
@@ -1958,7 +2145,7 @@ if (closeTiedBtn) closeTiedBtn.addEventListener('click', closeTiedUsersModal);
 // Mark as read logic
 const checkBadge = () => {
   const badge = document.getElementById('notifs-badge');
-  if (badge && localStorage.getItem('quiniela_notifs_read_v2') === 'true') {
+  if (badge && localStorage.getItem('quiniela_notifs_read_v3') === 'true') {
     badge.style.display = 'none';
   }
 };
@@ -1967,7 +2154,7 @@ checkBadge(); // Check on load
 const btnReadNotifs = document.getElementById('btn-read-notifs');
 if (btnReadNotifs) {
   btnReadNotifs.addEventListener('click', () => {
-    localStorage.setItem('quiniela_notifs_read_v2', 'true');
+    localStorage.setItem('quiniela_notifs_read_v3', 'true');
     checkBadge();
     closeNotifsModal();
     showToast('Novedades marcadas como leídas', 'success');

@@ -64,24 +64,7 @@ h1, h2, h3 { font-weight: 600; }
 .text-primary { color: var(--primary); }
 .hide { display: none !important; }
 
-/* Theme Toggle */
-.theme-toggle {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: var(--surface-variant);
-  border: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  color: var(--text-main);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  z-index: 100;
-}
+
 
 /* Material Cards */
 .m-card {
@@ -1127,6 +1110,8 @@ input[type="password"]::-ms-clear {
   font-size: 1rem;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   transition: all 0.2s;
+  overflow: hidden;
+  padding: 0;
 }
 .user-avatar-btn:active { transform: scale(0.9); }
 
@@ -1149,6 +1134,16 @@ input[type="password"]::-ms-clear {
   box-shadow: var(--shadow);
   border: 4px solid var(--surface);
   transition: background-color 0.3s, color 0.3s;
+  overflow: hidden;
+  padding: 0;
+}
+
+.user-avatar-btn img, .profile-avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
 }
 
 /* Gender Selection Boxes */
@@ -1506,4 +1501,38 @@ input[type="password"]::-ms-clear {
 .streak-pulsing {
   animation: pulse-streak 1.4s infinite ease-in-out !important;
   color: #ff5722 !important;
+}
+
+/* Tarjeta de Cierre Urgente (Glow Naranja-Rojo) */
+.match-card.urgent-card {
+  border: 2px dashed #ff5722 !important;
+  box-shadow: 0 0 10px rgba(255, 87, 34, 0.2);
+  animation: glowPulseUrgent 2.5s infinite ease-in-out;
+}
+
+@keyframes glowPulseUrgent {
+  0% { box-shadow: 0 0 6px rgba(255, 87, 34, 0.15); }
+  50% { box-shadow: 0 0 14px rgba(255, 87, 34, 0.4); }
+  100% { box-shadow: 0 0 6px rgba(255, 87, 34, 0.15); }
+}
+
+.urgent-badge-label {
+  position: absolute;
+  top: 12px;
+  right: 15px;
+  background: #ff5722;
+  color: white;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.match-card.urgent-card .match-date {
+  margin-right: 110px;
 }
