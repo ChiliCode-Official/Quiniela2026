@@ -1,4 +1,4 @@
-const CACHE_NAME = 'quiniela-cache-v6';
+const CACHE_NAME = 'quiniela-cache-v10';
 const urlsToCache = [
   './',
   './index.html',

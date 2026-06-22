@@ -226,6 +226,14 @@ input[type="password"]::-ms-clear {
   display: none;
 }
 
+@keyframes pulse-green-flash {
+  0% { background-color: rgba(30, 163, 98, 0.3); border-color: var(--success); }
+  100% { background-color: var(--surface-variant); border-color: transparent; }
+}
+.saved-flash {
+  animation: pulse-green-flash 1s ease forwards !important;
+}
+
 
 .btn {
   width: 100%;
@@ -1305,4 +1313,197 @@ input[type="password"]::-ms-clear {
   font-size: 0.9rem;
   opacity: 0.7;
   font-weight: 500;
+}
+
+/* ================= NUEVOS ESTILOS UX PREMIUM ================= */
+
+/* Widget del Próximo Cierre */
+.next-lock-widget {
+  background: linear-gradient(135deg, rgba(26, 115, 232, 0.08) 0%, rgba(255, 87, 34, 0.08) 100%);
+  border: 2px solid var(--primary);
+  margin-bottom: 20px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(11, 87, 208, 0.12);
+  position: relative;
+  overflow: hidden;
+  animation: slideUpSpring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.next-lock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ff5722;
+}
+
+.next-lock-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin: 6px 0;
+}
+
+.next-lock-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.next-lock-team img {
+  width: 24px;
+  height: 16px;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.next-lock-vs {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 800;
+  opacity: 0.6;
+}
+
+.next-lock-timer-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: var(--surface-variant);
+  padding: 8px 14px;
+  border-radius: 12px;
+  color: var(--text-main);
+}
+
+.next-lock-timer {
+  font-family: monospace;
+  font-size: 1.15rem;
+  color: #ff5722;
+  font-weight: 800;
+}
+
+/* Hover de Tarjetas y Botones */
+.match-card {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.match-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .match-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Área táctil optimizada en botones score */
+.btn-score {
+  width: 48px;
+  height: 48px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Acordeón de Tarjeta de Partido */
+.match-accordion-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 0 2px 0;
+  border-top: 1px dashed var(--border);
+  margin-top: 5px;
+  text-transform: uppercase;
+}
+
+.match-accordion-toggle:hover {
+  color: var(--primary);
+}
+
+.match-accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.match-accordion-content.expanded {
+  max-height: 180px;
+  padding-top: 10px;
+  padding-bottom: 5px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.form-circles {
+  display: flex;
+  gap: 5px;
+}
+
+.form-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: white;
+}
+
+.form-circle.win { background: var(--success); }
+.form-circle.draw { background: var(--warning); color: #000; }
+.form-circle.loss { background: var(--danger); }
+
+/* Badge de Pendientes en Filtros */
+.pending-badge {
+  background: #ff5722;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  margin-left: 6px;
+  display: inline-block;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Animación de Latido de Fuego */
+@keyframes pulse-streak {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px #ff5722); }
+  50% { transform: scale(1.18); filter: drop-shadow(0 0 8px #ff9800); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 2px #ff5722); }
+}
+
+.streak-pulsing {
+  animation: pulse-streak 1.4s infinite ease-in-out !important;
+  color: #ff5722 !important;
 }

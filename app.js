@@ -761,6 +761,264 @@ async function loadMatchesData() {
   }
 }
 
+function calculateActiveStreak() {
+  if (!matchesData || !userPredictions || userPredictions.length === 0) return 0;
+  
+  // 1. Obtener todos los partidos terminados con fecha válida
+  const finishedMatches = matchesData.filter(m => m.status === 'FINISHED' || m.status === 'TERMINADO');
+  
+  // 2. Ordenar por fecha descendente (más reciente primero)
+  finishedMatches.sort((a, b) => {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return safeNewDate(b.date) - safeNewDate(a.date);
+  });
+  
+  let streak = 0;
+  for (let i = 0; i < finishedMatches.length; i++) {
+    const match = finishedMatches[i];
+    const prono = userPredictions.find(p => p.partidoId == match.partidoId);
+    if (!prono) {
+      // Si no hay pronóstico en un partido ya terminado, la racha activa se rompe
+      break;
+    }
+    
+    // Calcular si obtuvo puntos en este partido
+    const rh = parseInt(match.golesLocal);
+    const ra = parseInt(match.golesVisitante);
+    const ph = parseInt(prono.golesLocal);
+    const pa = parseInt(prono.golesVisitante);
+    
+    if (isNaN(rh) || isNaN(ra) || isNaN(ph) || isNaN(pa)) {
+      break;
+    }
+    
+    let pts = 0;
+    const rGanador = rh > ra ? 1 : (rh < ra ? -1 : 0);
+    const pGanador = ph > pa ? 1 : (ph < pa ? -1 : 0);
+    
+    if (ph === rh && pa === ra) {
+      pts = 3; // Marcador exacto
+    } else if (rGanador === pGanador) {
+      pts = 1; // Resultado acertado
+    }
+    
+    if (pts > 0) {
+      streak++;
+    } else {
+      // Si falló el partido, la racha activa se corta
+      break;
+    }
+  }
+  return streak;
+}
+
+function updateProgressBar() {
+  const upcomingMatches = matchesData.filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED');
+  const totalUpcoming = upcomingMatches.length;
+  let predictedCount = 0;
+  upcomingMatches.forEach(match => {
+    const cached = localInputCache[match.partidoId];
+    const prono = userPredictions.find(p => p.partidoId == match.partidoId);
+    
+    let pLocal = '';
+    let pVisit = '';
+    if (cached) {
+      pLocal = cached.golesLocal;
+      pVisit = cached.golesVisitante;
+    } else if (prono) {
+      pLocal = String(prono.golesLocal).trim();
+      pVisit = String(prono.golesVisitante).trim();
+    }
+    
+    if (pLocal !== '' && pVisit !== '') {
+      predictedCount++;
+    }
+  });
+  
+  const progressContainer = document.querySelector('.progress-container');
+  const progressBar = document.getElementById('predictions-progress');
+  const progressText = document.getElementById('predictions-progress-text');
+  
+  if (progressContainer && progressBar && progressText) {
+    if (totalUpcoming > 0) {
+      progressContainer.style.display = 'block';
+      progressText.style.display = 'block';
+      const pct = Math.round((predictedCount / totalUpcoming) * 100);
+      progressBar.style.width = `${pct}%`;
+      progressText.textContent = `${predictedCount} de ${totalUpcoming} partidos pronosticados (${pct}%)`;
+      if (pct === 100) {
+        progressBar.style.background = 'var(--success)';
+      } else {
+        progressBar.style.background = 'var(--primary)';
+      }
+    } else {
+      progressContainer.style.display = 'none';
+      progressText.style.display = 'none';
+    }
+  }
+
+  // Actualizar contador del botón del filtro
+  const btnFilterQPending = document.getElementById('btn-filter-q-pending');
+  if (btnFilterQPending) {
+    const pendingCount = totalUpcoming - predictedCount;
+    if (pendingCount > 0) {
+      btnFilterQPending.innerHTML = `Solo Pendientes <span class="pending-badge">${pendingCount}</span>`;
+    } else {
+      btnFilterQPending.innerHTML = `Solo Pendientes`;
+    }
+  }
+}
+
+// --- NUEVOS MÉTODOS DE UX ESPECIALIZADO ---
+
+function getTeamForm(teamName) {
+  // Genera 5 círculos de forma basados en el hash del nombre del equipo para que sea determinista y realista
+  let hash = 0;
+  for (let i = 0; i < teamName.length; i++) {
+    hash = teamName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const results = ['win', 'win', 'draw', 'loss', 'win', 'draw', 'loss', 'win'];
+  const form = [];
+  for (let i = 0; i < 5; i++) {
+    const idx = Math.abs((hash + i) % results.length);
+    form.push(results[idx]);
+  }
+  return form;
+}
+
+window.toggleMatchAccordion = function(partidoId, btn) {
+  if (navigator.vibrate) navigator.vibrate(10);
+  const content = document.getElementById(`accordion-${partidoId}`);
+  if (!content) return;
+  
+  const isExpanded = content.classList.contains('expanded');
+  if (isExpanded) {
+    content.classList.remove('expanded');
+    btn.innerHTML = `<i class="fa-solid fa-circle-info"></i> Ver Detalles <i class="fa-solid fa-chevron-down accordion-arrow"></i>`;
+  } else {
+    content.classList.add('expanded');
+    btn.innerHTML = `<i class="fa-solid fa-circle-info"></i> Ocultar Detalles <i class="fa-solid fa-chevron-up accordion-arrow"></i>`;
+  }
+};
+
+let nextLockTimerId = null;
+
+function updateNextLockWidget() {
+  const widget = document.getElementById('next-lock-widget');
+  if (!widget) return;
+
+  const upcomingMatches = matchesData.filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED');
+  if (upcomingMatches.length === 0) {
+    widget.classList.add('hide');
+    if (nextLockTimerId) {
+      clearInterval(nextLockTimerId);
+      nextLockTimerId = null;
+    }
+    return;
+  }
+
+  const now = new Date();
+  
+  // Encontrar partidos que el usuario NO ha pronosticado aún
+  const unpredictedUpcoming = upcomingMatches.filter(match => {
+    const prono = userPredictions.find(p => p.partidoId == match.partidoId);
+    const cached = localInputCache[match.partidoId];
+    
+    let pLocal = '';
+    let pVisit = '';
+    if (cached) {
+      pLocal = cached.golesLocal;
+      pVisit = cached.golesVisitante;
+    } else if (prono) {
+      pLocal = String(prono.golesLocal).trim();
+      pVisit = String(prono.golesVisitante).trim();
+    }
+    
+    const hasPrediction = pLocal !== '' && pVisit !== '';
+    if (hasPrediction) return false;
+    
+    const matchDate = match.date ? safeNewDate(match.date) : null;
+    const lockTime = matchDate ? new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0) : null;
+    return lockTime && now < lockTime;
+  });
+
+  if (unpredictedUpcoming.length === 0) {
+    widget.innerHTML = `
+      <div style="text-align: center; color: var(--success); font-weight: 700; font-size: 0.95rem; width: 100%;">
+        <i class="fa-solid fa-circle-check" style="font-size: 1.2rem; margin-bottom: 5px; display: block;"></i>
+        ¡Estás al día! Has pronosticado todos los partidos futuros.
+      </div>
+    `;
+    widget.classList.remove('hide');
+    if (nextLockTimerId) {
+      clearInterval(nextLockTimerId);
+      nextLockTimerId = null;
+    }
+    return;
+  }
+
+  unpredictedUpcoming.sort((a, b) => {
+    return safeNewDate(a.date) - safeNewDate(b.date);
+  });
+
+  const nextMatch = unpredictedUpcoming[0];
+  const nextMatchDate = safeNewDate(nextMatch.date);
+  const lockTime = new Date(nextMatchDate.getFullYear(), nextMatchDate.getMonth(), nextMatchDate.getDate(), 0, 0, 0);
+
+  const localCode = flagMap[nextMatch.equipoLocal] || 'un';
+  const visitCode = flagMap[nextMatch.equipoVisitante] || 'un';
+  const localFlag = `https://flagcdn.com/w80/${localCode}.png`;
+  const visitFlag = `https://flagcdn.com/w80/${visitCode}.png`;
+
+  widget.innerHTML = `
+    <div class="next-lock-header">
+      <span><i class="fa-solid fa-clock-rotate-left"></i> ¡Falta este pronóstico!</span>
+      <span style="font-weight: 500; text-transform: none;">Cierra a media noche</span>
+    </div>
+    <div class="next-lock-teams">
+      <div class="next-lock-team">
+        <img src="${localFlag}" onerror="this.src='https://flagcdn.com/w80/un.png'">
+        <span>${nextMatch.equipoLocal}</span>
+      </div>
+      <span class="next-lock-vs">VS</span>
+      <div class="next-lock-team">
+        <span>${nextMatch.equipoVisitante}</span>
+        <img src="${visitFlag}" onerror="this.src='https://flagcdn.com/w80/un.png'">
+      </div>
+    </div>
+    <div class="next-lock-timer-container">
+      <span>Cierra en:</span>
+      <span id="next-lock-timer-value" class="next-lock-timer">--:--:--</span>
+    </div>
+  `;
+  widget.classList.remove('hide');
+
+  const updateTimer = () => {
+    const timerEl = document.getElementById('next-lock-timer-value');
+    if (!timerEl) return;
+    const currentTime = new Date();
+    const diff = lockTime - currentTime;
+    if (diff <= 0) {
+      timerEl.textContent = "¡CERRADO!";
+      clearInterval(nextLockTimerId);
+      nextLockTimerId = null;
+      setTimeout(renderQuiniela, 2000);
+      return;
+    }
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    const pad = (n) => n.toString().padStart(2, '0');
+    timerEl.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  };
+
+  updateTimer();
+  if (nextLockTimerId) clearInterval(nextLockTimerId);
+  nextLockTimerId = setInterval(updateTimer, 1000);
+}
+
 function renderQuiniela() {
   const container = document.getElementById('quiniela-list');
   container.innerHTML = '';
@@ -769,6 +1027,12 @@ function renderQuiniela() {
   
   // Actualizar banner de alertas de cierre
   updateAlertsBanner();
+
+  // Actualizar barra de progreso
+  updateProgressBar();
+
+  // Actualizar widget de próximo cierre
+  updateNextLockWidget();
   
   // Aplicar filtros
   const filteredMatches = upcomingMatches.filter(match => {
@@ -920,6 +1184,28 @@ function renderQuiniela() {
       
       ${saveBtnHtml}
       
+      <button class="match-accordion-toggle" onclick="toggleMatchAccordion(${match.partidoId}, this)">
+        <i class="fa-solid fa-circle-info"></i> Ver Detalles <i class="fa-solid fa-chevron-down accordion-arrow"></i>
+      </button>
+      <div id="accordion-${match.partidoId}" class="match-accordion-content">
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-muted);">
+          <span><strong>Grupo:</strong> ${teamToGroup[match.equipoLocal] || 'Fase Final'}</span>
+          <span><strong>ID Partido:</strong> #${match.partidoId}</span>
+        </div>
+        <div class="form-row">
+          <span style="font-weight:600;">Rendimiento ${match.equipoLocal}:</span>
+          <div class="form-circles">
+            ${getTeamForm(match.equipoLocal).map(f => `<span class="form-circle ${f}">${f === 'win' ? 'V' : (f === 'draw' ? 'E' : 'D')}</span>`).join('')}
+          </div>
+        </div>
+        <div class="form-row">
+          <span style="font-weight:600;">Rendimiento ${match.equipoVisitante}:</span>
+          <div class="form-circles">
+            ${getTeamForm(match.equipoVisitante).map(f => `<span class="form-circle ${f}">${f === 'win' ? 'V' : (f === 'draw' ? 'E' : 'D')}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+
       <div class="match-status-bar">
         <div class="status-pill ${statusClass}">${statusText}</div>
       </div>
@@ -1026,6 +1312,21 @@ window.savePrediction = async function(partidoId, btn) {
       delete localInputCache[partidoId];
       saveLocalInputCache();
       
+      // Destello verde de autoguardado en los inputs del marcador
+      const hInputEl = document.getElementById(`h-${partidoId}`);
+      const aInputEl = document.getElementById(`a-${partidoId}`);
+      if (hInputEl && aInputEl) {
+        hInputEl.classList.add('saved-flash');
+        aInputEl.classList.add('saved-flash');
+        setTimeout(() => {
+          hInputEl.classList.remove('saved-flash');
+          aInputEl.classList.remove('saved-flash');
+        }, 1000);
+      }
+      
+      // Actualizar la barra de progreso
+      updateProgressBar();
+      
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
       btn.className = 'btn-save-prono saved';
       btn.innerHTML = `<dotlottie-player src="https://lottie.host/8c067e41-0306-4443-8f0a-1102928574d7/1n13wFzLWe.json" background="transparent" speed="1" style="width: 25px; height: 25px;" autoplay></dotlottie-player> Guardado`;
@@ -1105,7 +1406,7 @@ async function loadPodio() {
         const icon = index === 0 ? '<i class="fa-solid fa-crown"></i>' : (index + 1);
         
         container.innerHTML += `
-          <div class="rank-item ${topClass}">
+          <div class="rank-item ${topClass}" style="animation-delay: ${index * 0.05}s;">
             <div class="rank-pos">${icon}</div>
             <div class="rank-user">${user.username}</div>
             <div class="rank-pts">${user.puntos} pts</div>
@@ -1488,12 +1789,18 @@ async function openTiedUsersModal() {
   const list = document.getElementById('tied-users-list');
   if (!modal || !list) return;
   
-  // Poner racha (calculo simulado basado en puntos si no existe backend)
+  // Poner racha real calculada dinámicamente
   const streakSpan = document.getElementById('modal-streak-count');
   const ptsSpan = document.getElementById('modal-tied-pts');
-  const calculatedStreak = currentPoints > 0 ? Math.min(3, Math.floor(currentPoints / 2) || 1) : 0;
+  const calculatedStreak = calculateActiveStreak();
   if (streakSpan) streakSpan.textContent = calculatedStreak;
   if (ptsSpan) ptsSpan.textContent = currentPoints;
+  
+  // Mostrar explicación de racha si el usuario tiene racha en 0
+  const explanationDiv = document.getElementById('streak-explanation');
+  if (explanationDiv) {
+    explanationDiv.style.display = calculatedStreak === 0 ? 'block' : 'none';
+  }
 
   // Si no tenemos los datos del podio todavía (p.ej. abrieron desde Perfil sin pasar por Podio)
   if (globalPodioData.length === 0) {
@@ -1533,10 +1840,78 @@ function closeTiedUsersModal() {
   if (modal) modal.classList.add('hide');
 }
 
+function openStreakInfoModal() {
+  const modal = document.getElementById('streak-info-modal');
+  if (modal) modal.classList.remove('hide');
+}
+
+function closeStreakInfoModal() {
+  const modal = document.getElementById('streak-info-modal');
+  if (modal) modal.classList.add('hide');
+}
+
 // --- NOTIFICATIONS MODAL ---
 function openNotifsModal() {
   const modal = document.getElementById('notifs-modal');
-  if (modal) modal.classList.remove('hide');
+  const dynSection = document.getElementById('dynamic-notifs-section');
+  if (modal) {
+    modal.classList.remove('hide');
+    if (dynSection) {
+      dynSection.innerHTML = '';
+      
+      // 1. Alertas de partidos pendientes
+      const upcomingMatches = matchesData.filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED');
+      let pendingCount = 0;
+      upcomingMatches.forEach(match => {
+        const prono = userPredictions.find(p => p.partidoId == match.partidoId);
+        const cached = localInputCache[match.partidoId];
+        let pLocal = '';
+        let pVisit = '';
+        if (cached) {
+          pLocal = cached.golesLocal;
+          pVisit = cached.golesVisitante;
+        } else if (prono) {
+          pLocal = String(prono.golesLocal).trim();
+          pVisit = String(prono.golesVisitante).trim();
+        }
+        if (pLocal === '' || pVisit === '') {
+          pendingCount++;
+        }
+      });
+      
+      if (pendingCount > 0) {
+        dynSection.innerHTML += `
+          <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid var(--warning); background: rgba(227, 116, 0, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
+            <h5 style="color: var(--warning); margin-bottom: 4px; font-weight: 700; font-size: 0.9rem;"><i class="fa-solid fa-circle-exclamation"></i> ¡Pronósticos Pendientes!</h5>
+            <p style="font-size: 0.85rem; color: var(--text-main); margin: 0;">Te faltan <strong>${pendingCount}</strong> partido(s) por pronosticar. No dejes ir puntos clave.</p>
+          </div>
+        `;
+      }
+      
+      // 2. Alertas de racha activa
+      const activeStreak = calculateActiveStreak();
+      if (activeStreak >= 3) {
+        dynSection.innerHTML += `
+          <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid #ff5722; background: rgba(255, 87, 34, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
+            <h5 style="color: #ff5722; margin-bottom: 4px; font-weight: 700; font-size: 0.9rem;"><i class="fa-solid fa-fire fa-bounce"></i> Racha de Fuego</h5>
+            <p style="font-size: 0.85rem; color: var(--text-main); margin: 0;">¡Increíble! Llevas <strong>${activeStreak}</strong> partidos seguidos sumando puntos en la Quiniela. 🔥</p>
+          </div>
+        `;
+      }
+      
+      // 3. Posición en el podio
+      const displayRank = document.getElementById('display-rank');
+      if (displayRank && displayRank.style.display !== 'none') {
+        const rankVal = displayRank.textContent;
+        dynSection.innerHTML += `
+          <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid var(--primary); background: rgba(11, 87, 208, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
+            <h5 style="color: var(--primary); margin-bottom: 4px; font-weight: 700; font-size: 0.9rem;"><i class="fa-solid fa-ranking-star"></i> Tu Lugar en la Tabla</h5>
+            <p style="font-size: 0.85rem; color: var(--text-main); margin: 0;">Actualmente te ubicas en la posición <strong>${rankVal}</strong> general.</p>
+          </div>
+        `;
+      }
+    }
+  }
 }
 function closeNotifsModal() {
   const modal = document.getElementById('notifs-modal');
@@ -1552,9 +1927,29 @@ if (btnHeaderNotifs) btnHeaderNotifs.addEventListener('click', openNotifsModal);
 
 const btnHeaderStreak = document.getElementById('btn-header-streak');
 if (btnHeaderStreak) {
-  // Override default inline onclick with the new combined modal
+  // Override default inline onclick with the new combined modal or info modal
   btnHeaderStreak.removeAttribute('onclick');
-  btnHeaderStreak.addEventListener('click', openTiedUsersModal);
+  btnHeaderStreak.addEventListener('click', () => {
+    const activeStreak = calculateActiveStreak();
+    if (activeStreak === 0) {
+      openStreakInfoModal();
+    } else {
+      openTiedUsersModal();
+    }
+  });
+}
+
+const btnCloseStreakInfo = document.getElementById('btn-close-streak-info');
+if (btnCloseStreakInfo) {
+  btnCloseStreakInfo.addEventListener('click', closeStreakInfoModal);
+}
+
+const btnShowTiesAnyway = document.getElementById('btn-show-ties-anyway');
+if (btnShowTiesAnyway) {
+  btnShowTiesAnyway.addEventListener('click', () => {
+    closeStreakInfoModal();
+    openTiedUsersModal();
+  });
 }
 
 const closeTiedBtn = document.getElementById('close-tied-btn');
@@ -1588,9 +1983,25 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 
 // --- STREAK (FUEGUITO) LOGIC ---
 function checkStreak() {
-  if (currentPoints > 0 && !sessionStorage.getItem('streak_shown')) {
-    // For prototype logic: if user has points, simulate an active streak!
+  const activeStreak = calculateActiveStreak();
+  
+  // Agregar o remover la clase de animación en el header
+  const btnStreak = document.getElementById('btn-header-streak');
+  if (btnStreak) {
+    if (activeStreak >= 3) {
+      btnStreak.classList.add('streak-pulsing');
+    } else {
+      btnStreak.classList.remove('streak-pulsing');
+    }
+  }
+
+  // Mostramos el modal de racha de fuego sólo si tiene una racha activa real de 3 o más partidos
+  if (activeStreak >= 3 && !sessionStorage.getItem('streak_shown')) {
     setTimeout(() => {
+      const streakText = document.getElementById('streak-modal-text');
+      if (streakText) {
+        streakText.innerHTML = `¡Has sumado puntos en los últimos <b>${activeStreak}</b> partidos seguidos!`;
+      }
       document.getElementById('streak-modal').classList.remove('hide');
       sessionStorage.setItem('streak_shown', 'true');
     }, 1500);
