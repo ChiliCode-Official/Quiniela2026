@@ -337,11 +337,16 @@
             </div>
           </div>
           <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; display: flex; align-items: center; gap: 15px;">
-            <div class="select-wrapper" style="flex: 1;">
-              <i class="fa-solid fa-flag" style="color: var(--text-muted);"></i>
-              <select id="profile-team-select" style="padding-left: 36px;">
-                <option value="">Sin equipo (Avatar Gris)</option>
-              </select>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+              <div class="select-wrapper">
+                <i class="fa-solid fa-flag" style="color: var(--text-muted);"></i>
+                <select id="profile-team-select" style="padding-left: 36px; width: 100%;">
+                  <option value="">Sin equipo (Avatar Gris)</option>
+                </select>
+              </div>
+              <button id="btn-test-confetti" class="btn secondary-btn" style="padding: 8px 12px; font-size: 0.85rem; border-radius: 12px; width: 100%; margin: 0; display: none; justify-content: center; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Probar Confeti
+              </button>
             </div>
             <div style="flex: 1.2;">
               <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);">Tu Selección Favorita</div>
@@ -565,6 +570,7 @@
         <h2 style="margin: 0; font-size: 1.2rem;">Novedades de la App</h2>
         <button class="close-btn" onclick="closeNotifsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
       </div>
+      <div class="modal-body" style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 20px;">
         <div id="dynamic-notifs-section" style="margin-bottom: 15px;"></div>
         <div class="m-card" style="margin-bottom: 15px; border-left: 4px solid #FF5722; background: rgba(255, 87, 34, 0.05); box-shadow: none; border-radius: 12px;">
           <h4 style="color: #FF5722; margin-bottom: 5px;"><i class="fa-solid fa-wand-magic-sparkles"></i> ¡Nuevas Funciones Premium!</h4>

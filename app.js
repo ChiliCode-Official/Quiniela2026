@@ -64,6 +64,28 @@ const teamToGroup = {
   'Inglaterra': 'Grupo L', 'Croacia': 'Grupo L', 'Ghana': 'Grupo L', 'Panamá': 'Grupo L'
 };
 
+const teamColors = {
+  'México': ['#006847', '#ffffff', '#CE1126'],
+  'Argentina': ['#74ACDF', '#ffffff', '#F6B40E'],
+  'Brasil': ['#009B3A', '#FEDF00', '#002776'],
+  'Alemania': ['#000000', '#DD0000', '#FFCC00'],
+  'España': ['#AD1519', '#FABD00'],
+  'Francia': ['#002395', '#ffffff', '#ED2939'],
+  'Estados Unidos': ['#3C3B6E', '#ffffff', '#B22234'],
+  'Canadá': ['#FF0000', '#ffffff'],
+  'Uruguay': ['#0081C6', '#ffffff', '#FCD116'],
+  'Portugal': ['#006600', '#FF0000', '#FFFF00'],
+  'Inglaterra': ['#FF0000', '#ffffff'],
+  'Países Bajos': ['#21468B', '#ffffff', '#AE1C28', '#FF4F00'],
+  'Bélgica': ['#000000', '#FDDA24', '#EF3340'],
+  'Colombia': ['#FCD116', '#003893', '#CE1126'],
+  'Marruecos': ['#C1272D', '#006233'],
+  'Japón': ['#ffffff', '#BC002D'],
+  'Corea del Sur': ['#ffffff', '#CD2E3A', '#0A2540'],
+  'Australia': ['#000031', '#ffffff', '#CC3333'],
+  'Croacia': ['#FF0000', '#ffffff', '#000099']
+};
+
 const flagMap = {
   'México': 'mx', 'Sudáfrica': 'za', 'Corea del Sur': 'kr', 'República Checa': 'cz',
   'Canadá': 'ca', 'Bosnia y Herzegovina': 'ba', 'Catar': 'qa', 'Suiza': 'ch',
@@ -432,6 +454,23 @@ function applyUserAvatar() {
       profileAvatar.innerHTML = `<i class="fa-solid fa-user"></i>`;
     }
   }
+  
+  updateConfettiButtonVisibility();
+}
+
+function updateConfettiButtonVisibility() {
+  const btn = document.getElementById('btn-test-confetti');
+  if (!btn) return;
+  if (!currentUser) {
+    btn.style.display = 'none';
+    return;
+  }
+  const favTeam = localStorage.getItem(`quiniela_fav_team_${currentUser}`) || '';
+  if (favTeam) {
+    btn.style.display = 'inline-flex';
+  } else {
+    btn.style.display = 'none';
+  }
 }
 
 function populateTeamSelect() {
@@ -769,27 +808,7 @@ async function loadUserRankAndConfetti() {
         hasShownConfetti = true;
         if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200, 50, 300]); // Vibración rítmica festiva
         
-        const teamColors = {
-          'México': ['#006847', '#ffffff', '#CE1126'],
-          'Argentina': ['#74ACDF', '#ffffff', '#F6B40E'],
-          'Brasil': ['#009B3A', '#FEDF00', '#002776'],
-          'Alemania': ['#000000', '#DD0000', '#FFCC00'],
-          'España': ['#AD1519', '#FABD00'],
-          'Francia': ['#002395', '#ffffff', '#ED2939'],
-          'Estados Unidos': ['#3C3B6E', '#ffffff', '#B22234'],
-          'Canadá': ['#FF0000', '#ffffff'],
-          'Uruguay': ['#0081C6', '#ffffff', '#FCD116'],
-          'Portugal': ['#006600', '#FF0000', '#FFFF00'],
-          'Inglaterra': ['#FF0000', '#ffffff'],
-          'Países Bajos': ['#21468B', '#ffffff', '#AE1C28', '#FF4F00'],
-          'Bélgica': ['#000000', '#FDDA24', '#EF3340'],
-          'Colombia': ['#FCD116', '#003893', '#CE1126'],
-          'Marruecos': ['#C1272D', '#006233'],
-          'Japón': ['#ffffff', '#BC002D'],
-          'Corea del Sur': ['#ffffff', '#CD2E3A', '#0A2540'],
-          'Australia': ['#000031', '#ffffff', '#CC3333'],
-          'Croacia': ['#FF0000', '#ffffff', '#000099']
-        };
+        
 
         const favTeam = localStorage.getItem(`quiniela_fav_team_${currentUser}`) || '';
         let colors = ['#0b57d0', '#1ea362', '#e37400', '#b3261e']; // Colores por defecto
@@ -2152,6 +2171,30 @@ const checkBadge = () => {
 };
 checkBadge(); // Check on load
 
+const btnTestConfetti = document.getElementById('btn-test-confetti');
+if (btnTestConfetti) {
+  btnTestConfetti.addEventListener('click', () => {
+    if (!currentUser) return;
+    const favTeam = localStorage.getItem(`quiniela_fav_team_${currentUser}`) || '';
+    if (!favTeam) return;
+    
+    let colors = ['#0b57d0', '#1ea362', '#e37400', '#b3261e']; // Default colors
+    if (teamColors[favTeam]) {
+      colors = teamColors[favTeam];
+    }
+    
+    if (window.confetti) {
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.65 },
+        colors: colors,
+        zIndex: 9999
+      });
+    }
+  });
+}
+
 const btnReadNotifs = document.getElementById('btn-read-notifs');
 if (btnReadNotifs) {
   btnReadNotifs.addEventListener('click', () => {
@@ -2209,4 +2252,5 @@ initApp = async function() {
   await originalInitApp();
   checkStreak();
 };
+
 
