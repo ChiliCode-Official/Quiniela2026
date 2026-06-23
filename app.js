@@ -10,6 +10,23 @@ function safeNewDate(dateStr) {
   return new Date(str);
 }
 
+function normalizeString(str) {
+  if (!str) return '';
+  return str.toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function getMatchLockTime(dateStr) {
+  if (!dateStr) return null;
+  const str = dateStr.toString().trim();
+  const datePart = str.split(/[ T]/)[0]; // Obtiene "YYYY-MM-DD"
+  return new Date(`${datePart}T00:00:00-06:00`);
+}
+
+
 function loadLocalInputCache() {
   if (!currentUser) {
     localInputCache = {};
@@ -131,9 +148,8 @@ function updateAlertsBanner() {
     const hasCachedProno = localInputCache[match.partidoId] && localInputCache[match.partidoId].golesLocal !== '' && localInputCache[match.partidoId].golesVisitante !== '';
     const hasPrediction = hasSavedProno || hasCachedProno;
     if (!hasPrediction && (match.status === 'SCHEDULED' || match.status === 'TIMED')) {
-      const matchDate = match.date ? safeNewDate(match.date) : null;
-      if (matchDate) {
-        const lockTime = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0);
+      const lockTime = getMatchLockTime(match.date);
+      if (lockTime) {
         const diff = lockTime - now;
         
         if (diff > 0) {
@@ -191,9 +207,8 @@ function checkAndSendNotifications() {
     const hasCachedProno = localInputCache[match.partidoId] && localInputCache[match.partidoId].golesLocal !== '' && localInputCache[match.partidoId].golesVisitante !== '';
     const hasPrediction = hasSavedProno || hasCachedProno;
     if (!hasPrediction && (match.status === 'SCHEDULED' || match.status === 'TIMED')) {
-      const matchDate = match.date ? safeNewDate(match.date) : null;
-      if (matchDate) {
-        const lockTime = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0);
+      const lockTime = getMatchLockTime(match.date);
+      if (lockTime) {
         const diff = lockTime - now;
         
         if (diff > 0) {
@@ -1047,8 +1062,7 @@ function updateNextLockWidget() {
     const hasPrediction = pLocal !== '' && pVisit !== '';
     if (hasPrediction) return false;
     
-    const matchDate = match.date ? safeNewDate(match.date) : null;
-    const lockTime = matchDate ? new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0) : null;
+    const lockTime = getMatchLockTime(match.date);
     return lockTime && now < lockTime;
   });
 
@@ -1072,8 +1086,7 @@ function updateNextLockWidget() {
   });
 
   const nextMatch = unpredictedUpcoming[0];
-  const nextMatchDate = safeNewDate(nextMatch.date);
-  const lockTime = new Date(nextMatchDate.getFullYear(), nextMatchDate.getMonth(), nextMatchDate.getDate(), 0, 0, 0);
+  const lockTime = getMatchLockTime(nextMatch.date);
 
   const localCode = flagMap[nextMatch.equipoLocal] || 'un';
   const visitCode = flagMap[nextMatch.equipoVisitante] || 'un';
@@ -1145,10 +1158,11 @@ function renderQuiniela() {
   
   // Aplicar filtros
   const filteredMatches = upcomingMatches.filter(match => {
-    // 1. Filtro por Texto
-    const local = match.equipoLocal.toLowerCase();
-    const visitante = match.equipoVisitante.toLowerCase();
-    if (searchQueryQ && !local.includes(searchQueryQ) && !visitante.includes(searchQueryQ)) {
+    // 1. Filtro por Texto (insensible a acentos/mayúsculas)
+    const local = normalizeString(match.equipoLocal);
+    const visitante = normalizeString(match.equipoVisitante);
+    const query = normalizeString(searchQueryQ);
+    if (query && !local.includes(query) && !visitante.includes(query)) {
       return false;
     }
     
@@ -1169,7 +1183,20 @@ function renderQuiniela() {
     // 4. Filtro Solo Pendientes y Hoy
     if (pendingFilterQ === 'pending') {
       const prono = userPredictions.find(p => p.partidoId == match.partidoId);
-      if (prono) return false;
+      const cached = localInputCache[match.partidoId];
+      
+      let pLocal = '';
+      let pVisit = '';
+      if (cached) {
+        pLocal = cached.golesLocal;
+        pVisit = cached.golesVisitante;
+      } else if (prono) {
+        pLocal = String(prono.golesLocal).trim();
+        pVisit = String(prono.golesVisitante).trim();
+      }
+      
+      const hasRealPrediction = pLocal !== '' && pVisit !== '';
+      if (hasRealPrediction) return false;
     } else if (pendingFilterQ === 'today') {
       if (!match.date) return false;
       const matchDate = safeNewDate(match.date);
@@ -1226,8 +1253,7 @@ function renderQuiniela() {
       pVisit = String(prono.golesVisitante).trim();
     }
     
-    const matchDate = match.date ? safeNewDate(match.date) : null;
-    const lockTime = matchDate ? new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0) : null;
+    const lockTime = getMatchLockTime(match.date);
     const isLocked = lockTime && now >= lockTime;
 
     // Calcular si le quedan menos de 12 horas para cerrar y no ha sido pronosticado
@@ -1548,7 +1574,9 @@ function renderPodioList() {
   }
   
   const filtered = globalPodioData.filter(user => {
-    return user.username.toLowerCase().includes(podioSearchQuery);
+    const userClean = normalizeString(user.username);
+    const queryClean = normalizeString(podioSearchQuery);
+    return userClean.includes(queryClean);
   });
   
   if (filtered.length === 0) {
@@ -1598,10 +1626,11 @@ function renderResultados() {
   
   // Aplicar filtros
   const filteredMatches = pastMatches.filter(match => {
-    // 1. Filtro por Texto
-    const local = match.equipoLocal.toLowerCase();
-    const visitante = match.equipoVisitante.toLowerCase();
-    if (searchQueryR && !local.includes(searchQueryR) && !visitante.includes(searchQueryR)) {
+    // 1. Filtro por Texto (insensible a acentos/mayúsculas)
+    const local = normalizeString(match.equipoLocal);
+    const visitante = normalizeString(match.equipoVisitante);
+    const query = normalizeString(searchQueryR);
+    if (query && !local.includes(query) && !visitante.includes(query)) {
       return false;
     }
     

@@ -8,6 +8,20 @@ function safeNewDate(dateStr) {
   return new Date(str);
 }
 
+function getMatchLockTime(matchDateVal) {
+  if (!matchDateVal) return new Date(0);
+  let dateStr = "";
+  if (matchDateVal instanceof Date) {
+    const tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+    dateStr = Utilities.formatDate(matchDateVal, tz, "yyyy-MM-dd'T'HH:mm:ssXXX");
+  } else {
+    dateStr = matchDateVal.toString().trim();
+  }
+  const datePart = dateStr.split(/[ T]/)[0];
+  return new Date(datePart + "T00:00:00-06:00");
+}
+
+
 function getApiKey() {
   return PropertiesService.getScriptProperties().getProperty('API_KEY_FOOTBALL') || "";
 }
@@ -86,9 +100,8 @@ function doGet(e) {
       const status = partidoData[5];
       const matchDateStr = partidoData[7]; // Columna H: Fecha
       if (matchDateStr) {
-        const matchDate = safeNewDate(matchDateStr);
+        const lockTime = getMatchLockTime(matchDateStr);
         const now = new Date();
-        const lockTime = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate(), 0, 0, 0);
         
         if (status === 'FINISHED' || status === 'IN_PLAY' || now >= lockTime) {
            return jsonResponse({ success: false, message: 'El tiempo límite para enviar este pronóstico ha expirado (Cierra a media noche)' });
