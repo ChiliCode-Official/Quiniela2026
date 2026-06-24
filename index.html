@@ -625,6 +625,28 @@
     </div>
   </div>
 
+  <!-- Botón Flotante de WhatsApp -->
+  <div id="whatsapp-float-btn" class="whatsapp-float" title="Soporte y Ayuda">
+    <i class="fa-brands fa-whatsapp"></i>
+  </div>
+
+  <!-- Modal de Ayuda / WhatsApp -->
+  <div id="whatsapp-help-modal" class="modal-overlay hide">
+    <div class="modal-content m-card" style="max-width: 320px; text-align: center; padding: 25px; border-radius: 16px; border: 2px solid #25D366; animation: slideUpSpring 0.5s ease forwards;">
+      <h3 style="color: #25D366; font-size: 1.4rem; margin-bottom: 10px;"><i class="fa-brands fa-whatsapp"></i> ¿Necesitas ayuda?</h3>
+      <i class="fa-solid fa-circle-question fa-beat" style="color: #25D366; font-size: 4.5rem; margin: 15px 0; text-shadow: 0 0 15px rgba(37, 211, 102, 0.3);"></i>
+      <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin-bottom: 20px;">Contacta al soporte para resolver cualquier problema.</p>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <a href="https://wa.me/525574123521?text=Hola,%20necesito%20ayuda%20con%20la%20Quiniela" target="_blank" id="btn-whatsapp-go" class="btn primary-btn" style="background: #25D366; border: none; font-weight: bold; margin: 0; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; color: white; padding: 12px;">
+          <i class="fa-brands fa-whatsapp" style="font-size: 1.2rem;"></i> Contactar por WhatsApp
+        </a>
+        <button id="btn-close-whatsapp-help" class="btn" style="background: var(--surface-variant); border: none; color: var(--text-main); margin: 0; padding: 12px; font-weight: 600; border-radius: 12px;">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="./app.js"></script>
 </body>
 </html>

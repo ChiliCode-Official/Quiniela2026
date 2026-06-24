@@ -407,6 +407,7 @@ input[type="password"]::-ms-clear {
 }
 .btn-score:active { background: rgba(0,0,0,0.1); }
 [data-theme="dark"] .btn-score:active { background: rgba(255,255,255,0.1); }
+.btn-score:disabled { opacity: 0.5; cursor: not-allowed; background: transparent; }
 
 /* Inputs */
 .score-input {
@@ -1536,3 +1537,32 @@ input[type="password"]::-ms-clear {
 .match-card.urgent-card .match-date {
   margin-right: 110px;
 }
+
+/* Botón flotante de WhatsApp */
+.whatsapp-float {
+  position: fixed;
+  bottom: 75px;
+  right: 20px;
+  width: 55px;
+  height: 55px;
+  background-color: #25D366;
+  color: #FFF;
+  border-radius: 50px;
+  text-align: center;
+  font-size: 30px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.whatsapp-float:hover {
+  transform: scale(1.1);
+  background-color: #20ba5a;
+}
+.whatsapp-float:active {
+  transform: scale(0.95);
+}
+

@@ -1,24 +1,33 @@
+function isValidDate(d) {
+  return d instanceof Date && !isNaN(d);
+}
+
 function safeNewDate(dateStr) {
-  if (!dateStr) return new Date();
-  if (dateStr instanceof Date) return dateStr;
+  if (!dateStr) return null;
+  if (dateStr instanceof Date) return isValidDate(dateStr) ? dateStr : null;
   var str = dateStr.toString().trim();
+  if (str === "Por definir" || str === "TBD") return null;
   if (str.indexOf(' ') !== -1 && str.indexOf('T') === -1) {
     str = str.replace(' ', 'T');
   }
-  return new Date(str);
+  const d = new Date(str);
+  return isValidDate(d) ? d : null;
 }
 
 function getMatchLockTime(matchDateVal) {
-  if (!matchDateVal) return new Date(0);
+  if (!matchDateVal || matchDateVal === "Por definir" || matchDateVal === "TBD") return new Date(0);
   let dateStr = "";
   if (matchDateVal instanceof Date) {
+    if (!isValidDate(matchDateVal)) return new Date(0);
     const tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
     dateStr = Utilities.formatDate(matchDateVal, tz, "yyyy-MM-dd'T'HH:mm:ssXXX");
   } else {
     dateStr = matchDateVal.toString().trim();
   }
   const datePart = dateStr.split(/[ T]/)[0];
-  return new Date(datePart + "T00:00:00-06:00");
+  if (!datePart || datePart.length < 10) return new Date(0);
+  const d = new Date(datePart + "T00:00:00-06:00");
+  return isValidDate(d) ? d : new Date(0);
 }
 
 
@@ -103,7 +112,7 @@ function doGet(e) {
         const lockTime = getMatchLockTime(matchDateStr);
         const now = new Date();
         
-        if (status === 'FINISHED' || status === 'IN_PLAY' || now >= lockTime) {
+        if (status === 'FINISHED' || status === 'TERMINADO' || status === 'IN_PLAY' || now >= lockTime) {
            return jsonResponse({ success: false, message: 'El tiempo límite para enviar este pronóstico ha expirado (Cierra a media noche)' });
         }
       }

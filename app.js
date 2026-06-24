@@ -1,13 +1,19 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTonzylHgo9XmI0GnTzyfkKSaORL7yFW0tuyzTGgOC-4QvX-UKT7VKHI_w01u9afeBtw/exec';
 
+function isValidDate(d) {
+  return d instanceof Date && !isNaN(d);
+}
+
 function safeNewDate(dateStr) {
-  if (!dateStr) return new Date();
-  if (dateStr instanceof Date) return dateStr;
+  if (!dateStr) return null;
+  if (dateStr instanceof Date) return isValidDate(dateStr) ? dateStr : null;
   var str = dateStr.toString().trim();
+  if (str === "Por definir" || str === "TBD") return null;
   if (str.indexOf(' ') !== -1 && str.indexOf('T') === -1) {
     str = str.replace(' ', 'T');
   }
-  return new Date(str);
+  const d = new Date(str);
+  return isValidDate(d) ? d : null;
 }
 
 function normalizeString(str) {
@@ -20,10 +26,12 @@ function normalizeString(str) {
 }
 
 function getMatchLockTime(dateStr) {
-  if (!dateStr) return null;
+  if (!dateStr || dateStr === "Por definir" || dateStr === "TBD") return null;
   const str = dateStr.toString().trim();
   const datePart = str.split(/[ T]/)[0]; // Obtiene "YYYY-MM-DD"
-  return new Date(`${datePart}T00:00:00-06:00`);
+  if (!datePart || datePart.length < 10) return null;
+  const d = new Date(`${datePart}T00:00:00-06:00`);
+  return isValidDate(d) ? d : null;
 }
 
 
@@ -130,6 +138,14 @@ function getMatchStage(partidoId) {
   return 'unknown';
 }
 
+function isMatchUpcoming(match) {
+  return match.status !== 'FINISHED' && match.status !== 'TERMINADO' && match.status !== 'IN_PLAY';
+}
+
+function isMatchPast(match) {
+  return match.status === 'FINISHED' || match.status === 'TERMINADO' || match.status === 'IN_PLAY';
+}
+
 function updateAlertsBanner() {
   const banner = document.getElementById('quiniela-alerts');
   if (!banner) return;
@@ -147,7 +163,7 @@ function updateAlertsBanner() {
     const hasSavedProno = userPredictions.some(p => p.partidoId == match.partidoId && p.golesLocal !== '' && p.golesVisitante !== '');
     const hasCachedProno = localInputCache[match.partidoId] && localInputCache[match.partidoId].golesLocal !== '' && localInputCache[match.partidoId].golesVisitante !== '';
     const hasPrediction = hasSavedProno || hasCachedProno;
-    if (!hasPrediction && (match.status === 'SCHEDULED' || match.status === 'TIMED')) {
+    if (!hasPrediction && isMatchUpcoming(match)) {
       const lockTime = getMatchLockTime(match.date);
       if (lockTime) {
         const diff = lockTime - now;
@@ -206,7 +222,7 @@ function checkAndSendNotifications() {
     const hasSavedProno = userPredictions.some(p => p.partidoId == match.partidoId && p.golesLocal !== '' && p.golesVisitante !== '');
     const hasCachedProno = localInputCache[match.partidoId] && localInputCache[match.partidoId].golesLocal !== '' && localInputCache[match.partidoId].golesVisitante !== '';
     const hasPrediction = hasSavedProno || hasCachedProno;
-    if (!hasPrediction && (match.status === 'SCHEDULED' || match.status === 'TIMED')) {
+    if (!hasPrediction && isMatchUpcoming(match)) {
       const lockTime = getMatchLockTime(match.date);
       if (lockTime) {
         const diff = lockTime - now;
@@ -372,6 +388,7 @@ function showToast(message, type = 'success') {
 function formatDate(isoString) {
   if (!isoString) return 'Fecha por definir';
   const d = safeNewDate(isoString);
+  if (!d) return 'Fecha por definir';
   return d.toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' hrs';
 }
 
@@ -893,9 +910,11 @@ function calculateActiveStreak() {
   
   // 2. Ordenar por fecha descendente (más reciente primero)
   finishedMatches.sort((a, b) => {
-    if (!a.date) return 1;
-    if (!b.date) return -1;
-    return safeNewDate(b.date) - safeNewDate(a.date);
+    const da = safeNewDate(a.date);
+    const db = safeNewDate(b.date);
+    if (!da) return 1;
+    if (!db) return -1;
+    return db - da;
   });
   
   let streak = 0;
@@ -938,7 +957,7 @@ function calculateActiveStreak() {
 }
 
 function updateProgressBar() {
-  const upcomingMatches = matchesData.filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED');
+  const upcomingMatches = matchesData.filter(m => isMatchUpcoming(m));
   const totalUpcoming = upcomingMatches.length;
   let predictedCount = 0;
   upcomingMatches.forEach(match => {
@@ -997,6 +1016,7 @@ function updateProgressBar() {
 // --- NUEVOS MÉTODOS DE UX ESPECIALIZADO ---
 
 function getTeamForm(teamName) {
+  if (!teamName) return ['draw', 'draw', 'draw', 'draw', 'draw'];
   // Genera 5 círculos de forma basados en el hash del nombre del equipo para que sea determinista y realista
   let hash = 0;
   for (let i = 0; i < teamName.length; i++) {
@@ -1032,7 +1052,7 @@ function updateNextLockWidget() {
   const widget = document.getElementById('next-lock-widget');
   if (!widget) return;
 
-  const upcomingMatches = matchesData.filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED');
+  const upcomingMatches = matchesData.filter(m => isMatchUpcoming(m));
   if (upcomingMatches.length === 0) {
     widget.classList.add('hide');
     if (nextLockTimerId) {
@@ -1082,7 +1102,11 @@ function updateNextLockWidget() {
   }
 
   unpredictedUpcoming.sort((a, b) => {
-    return safeNewDate(a.date) - safeNewDate(b.date);
+    const da = safeNewDate(a.date);
+    const db = safeNewDate(b.date);
+    if (!da) return 1;
+    if (!db) return -1;
+    return da - db;
   });
 
   const nextMatch = unpredictedUpcoming[0];
@@ -1145,7 +1169,7 @@ function renderQuiniela() {
   const container = document.getElementById('quiniela-list');
   container.innerHTML = '';
   
-  const upcomingMatches = matchesData.filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED');
+  const upcomingMatches = matchesData.filter(m => isMatchUpcoming(m));
   
   // Actualizar banner de alertas de cierre
   updateAlertsBanner();
@@ -1224,9 +1248,11 @@ function renderQuiniela() {
   
   // Ordenar por fecha
   filteredMatches.sort((a, b) => {
-    if (!a.date) return 1;
-    if (!b.date) return -1;
-    return safeNewDate(a.date) - safeNewDate(b.date);
+    const da = safeNewDate(a.date);
+    const db = safeNewDate(b.date);
+    if (!da) return 1;
+    if (!db) return -1;
+    return da - db;
   });
   
   const now = new Date();
@@ -1308,7 +1334,7 @@ function renderQuiniela() {
       ${urgentBadge}
       <div class="match-header">
         <span>COPA DE FÚTBOL</span>
-        <span class="match-date">${match.date ? new Date(match.date).toLocaleString('es-MX', {day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'}) : 'Por definir'}</span>
+        <span class="match-date">${match.date && safeNewDate(match.date) ? safeNewDate(match.date).toLocaleString('es-MX', {day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'}) : 'Por definir'}</span>
       </div>
       
       <div class="teams-container">
@@ -1431,8 +1457,11 @@ window.markAsPending = function(partidoId) {
 window.savePrediction = async function(partidoId, btn) {
   if (!btn) btn = event.currentTarget;
   
-  const hInput = document.getElementById(`h-${partidoId}`).value;
-  const aInput = document.getElementById(`a-${partidoId}`).value;
+  const hInputEl = document.getElementById(`h-${partidoId}`);
+  const aInputEl = document.getElementById(`a-${partidoId}`);
+  
+  const hInput = hInputEl.value;
+  const aInput = aInputEl.value;
   
   if (hInput === '' || aInput === '') {
     showToast('Ingresa ambos resultados', 'warning');
@@ -1442,6 +1471,13 @@ window.savePrediction = async function(partidoId, btn) {
   const originalHtml = btn.innerHTML;
   btn.innerHTML = '<i class="fa-solid fa-futbol fa-bounce"></i> Guardando...';
   btn.disabled = true;
+  hInputEl.disabled = true;
+  aInputEl.disabled = true;
+  const matchCard = btn.closest('.match-card');
+  if (matchCard) {
+    const scoreBtns = matchCard.querySelectorAll('.btn-score');
+    scoreBtns.forEach(b => b.disabled = true);
+  }
   
   try {
     const queryParams = new URLSearchParams({
@@ -1456,6 +1492,13 @@ window.savePrediction = async function(partidoId, btn) {
     const data = await res.json();
     
     btn.disabled = false;
+    hInputEl.disabled = false;
+    aInputEl.disabled = false;
+    if (matchCard) {
+      const scoreBtns = matchCard.querySelectorAll('.btn-score');
+      scoreBtns.forEach(b => b.disabled = false);
+    }
+
     if (data.success) {
       // Update memory
       let prono = userPredictions.find(p => p.partidoId == partidoId);
@@ -1496,6 +1539,12 @@ window.savePrediction = async function(partidoId, btn) {
     }
   } catch (error) {
     btn.disabled = false;
+    hInputEl.disabled = false;
+    aInputEl.disabled = false;
+    if (matchCard) {
+      const scoreBtns = matchCard.querySelectorAll('.btn-score');
+      scoreBtns.forEach(b => b.disabled = false);
+    }
     showToast('Error al guardar', 'error');
     btn.innerHTML = originalHtml;
   }
@@ -2272,6 +2321,23 @@ const btnCloseStreak = document.getElementById('btn-close-streak');
 if (btnCloseStreak) {
   btnCloseStreak.addEventListener('click', () => {
     document.getElementById('streak-modal').classList.add('hide');
+  });
+}
+
+// WhatsApp Float Support Modal Logic
+const whatsappBtn = document.getElementById('whatsapp-float-btn');
+const whatsappModal = document.getElementById('whatsapp-help-modal');
+const closeWhatsappHelp = document.getElementById('btn-close-whatsapp-help');
+
+if (whatsappBtn && whatsappModal) {
+  whatsappBtn.addEventListener('click', () => {
+    whatsappModal.classList.remove('hide');
+  });
+}
+
+if (closeWhatsappHelp && whatsappModal) {
+  closeWhatsappHelp.addEventListener('click', () => {
+    whatsappModal.classList.add('hide');
   });
 }
 
