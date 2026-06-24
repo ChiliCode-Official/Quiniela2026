@@ -188,6 +188,9 @@ function updateAlertsBanner() {
         <i class="fa-solid fa-triangle-exclamation" style="font-size:1.2rem;"></i>
         <span><strong>¡Recordatorio de Pronósticos Pendientes!</strong></span>
       </div>
+      <p style="font-size: 0.85rem; margin-top: 5px; margin-bottom: 5px; color: var(--text-main); font-weight: bold;">
+        ⚠️ Hemos lanzado mejoras. Por favor desliza hacia abajo la pantalla para recargar (o usa el botón de refrescar en tu navegador si estás en computadora).
+      </p>
       <ul style="margin-top: 8px; padding-left: 20px; font-weight: 500;">
     `;
     if (pending1Day > 0) {
@@ -248,11 +251,11 @@ function checkAndSendNotifications() {
     let body = "";
     
     if (pending1Day > 0) {
-      body = `¡Alerta! Tienes ${pending1Day} partidos pendientes que cierran en menos de 24 horas. ¡Envía tus pronósticos ya!`;
+      body = `¡Alerta! Tienes ${pending1Day} partidos pendientes que cierran en menos de 24 horas. ¡Desliza la pantalla para recargar (o refresca en PC) y envía tus pronósticos!`;
     } else if (pending2Days > 0) {
-      body = `Recordatorio: Tienes ${pending2Days} partidos pendientes que cierran en menos de 2 días.`;
+      body = `Recordatorio: Tienes ${pending2Days} partidos pendientes que cierran en menos de 2 días. (Por favor desliza para recargar la página o refresca en PC)`;
     } else if (pending7Days > 0) {
-      body = `Aviso: Tienes ${pending7Days} partidos pendientes que cierran en menos de 1 semana.`;
+      body = `Aviso: Tienes ${pending7Days} partidos pendientes que cierran en menos de 1 semana. (Por favor desliza para recargar la página o refresca en PC)`;
     }
     
     if (body) {
@@ -1455,25 +1458,39 @@ window.markAsPending = function(partidoId) {
 }
 
 window.savePrediction = async function(partidoId, btn) {
-  if (!btn) btn = event.currentTarget;
+  let btnSave = btn || document.getElementById(`btn-${partidoId}`);
+  let hInputEl = document.getElementById(`h-${partidoId}`);
+  let aInputEl = document.getElementById(`a-${partidoId}`);
   
-  const hInputEl = document.getElementById(`h-${partidoId}`);
-  const aInputEl = document.getElementById(`a-${partidoId}`);
+  let hInput = '';
+  let aInput = '';
   
-  const hInput = hInputEl.value;
-  const aInput = aInputEl.value;
+  if (hInputEl && aInputEl) {
+    hInput = hInputEl.value;
+    aInput = aInputEl.value;
+  } else if (localInputCache[partidoId]) {
+    hInput = localInputCache[partidoId].golesLocal;
+    aInput = localInputCache[partidoId].golesVisitante;
+  }
   
   if (hInput === '' || aInput === '') {
     showToast('Ingresa ambos resultados', 'warning');
     return;
   }
   
-  const originalHtml = btn.innerHTML;
-  btn.innerHTML = '<i class="fa-solid fa-futbol fa-bounce"></i> Guardando...';
-  btn.disabled = true;
-  hInputEl.disabled = true;
-  aInputEl.disabled = true;
-  const matchCard = btn.closest('.match-card');
+  let originalHtml = '';
+  let matchCard = null;
+  
+  if (btnSave) {
+    originalHtml = btnSave.innerHTML;
+    btnSave.innerHTML = '<i class="fa-solid fa-futbol fa-bounce"></i> Guardando...';
+    btnSave.disabled = true;
+    matchCard = btnSave.closest('.match-card');
+  }
+  
+  if (hInputEl) hInputEl.disabled = true;
+  if (aInputEl) aInputEl.disabled = true;
+  
   if (matchCard) {
     const scoreBtns = matchCard.querySelectorAll('.btn-score');
     scoreBtns.forEach(b => b.disabled = true);
@@ -1491,12 +1508,20 @@ window.savePrediction = async function(partidoId, btn) {
     const res = await fetch(`${SCRIPT_URL}?${queryParams}`);
     const data = await res.json();
     
-    btn.disabled = false;
-    hInputEl.disabled = false;
-    aInputEl.disabled = false;
-    if (matchCard) {
-      const scoreBtns = matchCard.querySelectorAll('.btn-score');
-      scoreBtns.forEach(b => b.disabled = false);
+    // Re-buscar elementos del DOM tras el await, porque los filtros pudieron haber recreado la lista
+    btnSave = document.getElementById(`btn-${partidoId}`);
+    hInputEl = document.getElementById(`h-${partidoId}`);
+    aInputEl = document.getElementById(`a-${partidoId}`);
+    
+    if (btnSave) btnSave.disabled = false;
+    if (hInputEl) hInputEl.disabled = false;
+    if (aInputEl) aInputEl.disabled = false;
+    if (btnSave) {
+      matchCard = btnSave.closest('.match-card');
+      if (matchCard) {
+        const scoreBtns = matchCard.querySelectorAll('.btn-score');
+        scoreBtns.forEach(b => b.disabled = false);
+      }
     }
 
     if (data.success) {
@@ -1513,14 +1538,14 @@ window.savePrediction = async function(partidoId, btn) {
       saveLocalInputCache();
       
       // Destello verde de autoguardado en los inputs del marcador
-      const hInputEl = document.getElementById(`h-${partidoId}`);
-      const aInputEl = document.getElementById(`a-${partidoId}`);
       if (hInputEl && aInputEl) {
         hInputEl.classList.add('saved-flash');
         aInputEl.classList.add('saved-flash');
         setTimeout(() => {
-          hInputEl.classList.remove('saved-flash');
-          aInputEl.classList.remove('saved-flash');
+          let currH = document.getElementById(`h-${partidoId}`);
+          let currA = document.getElementById(`a-${partidoId}`);
+          if (currH) currH.classList.remove('saved-flash');
+          if (currA) currA.classList.remove('saved-flash');
         }, 1000);
       }
       
@@ -1528,25 +1553,34 @@ window.savePrediction = async function(partidoId, btn) {
       updateProgressBar();
       
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-      btn.className = 'btn-save-prono saved';
-      btn.innerHTML = `<dotlottie-player src="https://lottie.host/8c067e41-0306-4443-8f0a-1102928574d7/1n13wFzLWe.json" background="transparent" speed="1" style="width: 25px; height: 25px;" autoplay></dotlottie-player> Guardado`;
+      if (btnSave) {
+        btnSave.className = 'btn-save-prono saved';
+        btnSave.innerHTML = `<dotlottie-player src="https://lottie.host/8c067e41-0306-4443-8f0a-1102928574d7/1n13wFzLWe.json" background="transparent" speed="1" style="width: 25px; height: 25px;" autoplay></dotlottie-player> Guardado`;
+      }
       
       showToast('Pronóstico guardado exitosamente', 'success');
       updateAlertsBanner();
     } else {
       showToast(data.message, 'error');
-      btn.innerHTML = originalHtml;
+      if (btnSave) btnSave.innerHTML = originalHtml;
     }
   } catch (error) {
-    btn.disabled = false;
-    hInputEl.disabled = false;
-    aInputEl.disabled = false;
-    if (matchCard) {
-      const scoreBtns = matchCard.querySelectorAll('.btn-score');
-      scoreBtns.forEach(b => b.disabled = false);
+    btnSave = document.getElementById(`btn-${partidoId}`);
+    hInputEl = document.getElementById(`h-${partidoId}`);
+    aInputEl = document.getElementById(`a-${partidoId}`);
+    
+    if (btnSave) btnSave.disabled = false;
+    if (hInputEl) hInputEl.disabled = false;
+    if (aInputEl) aInputEl.disabled = false;
+    if (btnSave) {
+      matchCard = btnSave.closest('.match-card');
+      if (matchCard) {
+        const scoreBtns = matchCard.querySelectorAll('.btn-score');
+        scoreBtns.forEach(b => b.disabled = false);
+      }
+      btnSave.innerHTML = originalHtml;
     }
     showToast('Error al guardar', 'error');
-    btn.innerHTML = originalHtml;
   }
 }
 
