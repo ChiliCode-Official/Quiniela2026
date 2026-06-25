@@ -1,4 +1,4 @@
-const CACHE_NAME = 'quiniela-cache-v17';
+const CACHE_NAME = 'quiniela-cache-v18';
 const urlsToCache = [
   './',
   './index.html',
@@ -32,13 +32,27 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Estrategia Network First para archivos principales, Cache First para otros
-  if (urlsToCache.some(url => event.request.url.includes(url.replace('./', '')))) {
+  // Excluir llamadas de la API de Google Apps Script y peticiones que no sean GET
+  if (event.request.url.includes('script.google.com') || event.request.method !== 'GET') {
+    return; // Ir directamente a la red sin interceptar ni almacenar en caché
+  }
+
+  const urlObj = new URL(event.request.url);
+  const isRoot = urlObj.pathname === '/' || urlObj.pathname.endsWith('/index.html') || urlObj.pathname.endsWith('/');
+  
+  const isStaticAsset = isRoot || urlsToCache.some(url => {
+    const assetName = url.replace('./', '');
+    return assetName && urlObj.pathname.endsWith(assetName);
+  });
+
+  if (isStaticAsset) {
     event.respondWith(
       fetch(event.request)
         .then(response => {
-          const resClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
+          if (response.status === 200) {
+            const resClone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
+          }
           return response;
         })
         .catch(() => caches.match(event.request))

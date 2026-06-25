@@ -25,6 +25,13 @@ function normalizeString(str) {
     .trim();
 }
 
+function fetchWithTimeout(url, options = {}, timeout = 8000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout))
+  ]);
+}
+
 function getMatchLockTime(dateStr) {
   if (!dateStr || dateStr === "Por definir" || dateStr === "TBD") return null;
   const str = dateStr.toString().trim();
@@ -591,9 +598,9 @@ if (savedEmail && savedPass) {
 
 async function autoLogin(email, pass) {
   try {
-    const queryParams = new URLSearchParams({ action: 'login', email: email, password: pass }).toString();
+    const queryParams = new URLSearchParams({ action: 'login', email: email, password: pass, _t: Date.now() }).toString();
     // redirect: 'follow' es necesario para las redirecciones 302 de Google Apps Script
-    const res = await fetch(`${SCRIPT_URL}?${queryParams}`, { redirect: 'follow' });
+    const res = await fetchWithTimeout(`${SCRIPT_URL}?${queryParams}`, { redirect: 'follow' });
     const data = await res.json();
     document.getElementById('loading-overlay').classList.add('hide');
     if (data.success) {
@@ -669,9 +676,9 @@ async function handleAuth(action) {
   document.getElementById('loading-overlay').classList.remove('hide');
   
   try {
-    const queryParams = new URLSearchParams({ action, email: emailInput, username: usernameInput, password: passwordInputValue }).toString();
+    const queryParams = new URLSearchParams({ action, email: emailInput, username: usernameInput, password: passwordInputValue, _t: Date.now() }).toString();
     // redirect: 'follow' es necesario porque Google Apps Script usa redirecciones 302
-    const res = await fetch(`${SCRIPT_URL}?${queryParams}`, { redirect: 'follow' });
+    const res = await fetchWithTimeout(`${SCRIPT_URL}?${queryParams}`, { redirect: 'follow' });
     
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
@@ -721,8 +728,15 @@ const ptrIndicator = document.getElementById('ptr-indicator');
 const ptrIcon = document.getElementById('ptr-icon');
 
 document.addEventListener('touchstart', (e) => {
+  const target = e.target;
+  // Evitar jalar si el toque es en un elemento interactivo
+  if (target.closest('button, input, select, textarea, a, .btn-score, .nav-item, .nav-item-btn, .whatsapp-float')) {
+    isPulling = false;
+    return;
+  }
   if (window.scrollY === 0) {
     ptrStartY = e.touches[0].clientY;
+    ptrCurrentY = e.touches[0].clientY;
     isPulling = true;
   }
 }, { passive: true });
@@ -733,11 +747,14 @@ document.addEventListener('touchmove', (e) => {
   const pullDistance = ptrCurrentY - ptrStartY;
   
   if (pullDistance > 0 && window.scrollY === 0) {
-    ptrIndicator.style.transform = `translateY(${Math.min(pullDistance / 2, 80)}px)`;
-    if (pullDistance > 120) {
-      ptrIcon.className = 'fa-solid fa-rotate text-primary';
-    } else {
-      ptrIcon.className = 'fa-solid fa-arrow-down text-primary';
+    // Solo mover si pasa un umbral para evitar falsos positivos y clicks cancelados
+    if (pullDistance > 10) {
+      ptrIndicator.style.transform = `translateY(${Math.min((pullDistance - 10) / 2, 80)}px)`;
+      if (pullDistance > 120) {
+        ptrIcon.className = 'fa-solid fa-rotate text-primary';
+      } else {
+        ptrIcon.className = 'fa-solid fa-arrow-down text-primary';
+      }
     }
   }
 }, { passive: true });
@@ -750,7 +767,9 @@ document.addEventListener('touchend', () => {
   if (pullDistance > 120 && window.scrollY === 0) {
     ptrIcon.className = 'fa-solid fa-circle-notch fa-spin text-primary';
     if (navigator.vibrate) navigator.vibrate(50);
-    initApp().then(() => {
+    initApp().catch(err => {
+      console.error("Error en pull-to-refresh:", err);
+    }).finally(() => {
       ptrIndicator.style.transform = 'translateY(0)';
       ptrIcon.className = 'fa-solid fa-arrow-down text-primary';
     });
@@ -801,7 +820,7 @@ async function initApp() {
 
 async function loadUserRankAndConfetti() {
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getPodio`);
+    const res = await fetchWithTimeout(`${SCRIPT_URL}?action=getPodio&_t=${Date.now()}`);
     const data = await res.json();
     if (data.success && data.podio) {
       const index = data.podio.findIndex(u => u.username === currentUser);
@@ -887,12 +906,12 @@ async function loadMatchesData() {
   if (resultadosList && resultadosList.innerHTML === '') resultadosList.innerHTML = skeletonHTML;
 
   try {
-    const resPartidos = await fetch(`${SCRIPT_URL}?action=getPartidos`);
+    const resPartidos = await fetchWithTimeout(`${SCRIPT_URL}?action=getPartidos&_t=${Date.now()}`);
     const dataPartidos = await resPartidos.json();
     if (dataPartidos.success) matchesData = dataPartidos.matches;
     
     const userEmail = localStorage.getItem('quiniela_email') || "";
-    const resPronos = await fetch(`${SCRIPT_URL}?action=getMisPronosticos&username=${currentUser}&email=${encodeURIComponent(userEmail)}`);
+    const resPronos = await fetchWithTimeout(`${SCRIPT_URL}?action=getMisPronosticos&username=${currentUser}&email=${encodeURIComponent(userEmail)}&_t=${Date.now()}`);
     const dataPronos = await resPronos.json();
     if (dataPronos.success) userPredictions = dataPronos.pronosticos;
     
@@ -1114,6 +1133,14 @@ function updateNextLockWidget() {
 
   const nextMatch = unpredictedUpcoming[0];
   const lockTime = getMatchLockTime(nextMatch.date);
+  if (!lockTime) {
+    widget.classList.add('hide');
+    if (nextLockTimerId) {
+      clearInterval(nextLockTimerId);
+      nextLockTimerId = null;
+    }
+    return;
+  }
 
   const localCode = flagMap[nextMatch.equipoLocal] || 'un';
   const visitCode = flagMap[nextMatch.equipoVisitante] || 'un';
@@ -1227,6 +1254,7 @@ function renderQuiniela() {
     } else if (pendingFilterQ === 'today') {
       if (!match.date) return false;
       const matchDate = safeNewDate(match.date);
+      if (!matchDate) return false; // Evitar TypeError si la fecha no es válida/TBD
       const today = new Date();
       if (matchDate.getFullYear() !== today.getFullYear() ||
           matchDate.getMonth() !== today.getMonth() ||
@@ -1486,6 +1514,8 @@ window.savePrediction = async function(partidoId, btn) {
     btnSave.innerHTML = '<i class="fa-solid fa-futbol fa-bounce"></i> Guardando...';
     btnSave.disabled = true;
     matchCard = btnSave.closest('.match-card');
+  } else {
+    matchCard = hInputEl ? hInputEl.closest('.match-card') : null;
   }
   
   if (hInputEl) hInputEl.disabled = true;
@@ -1502,10 +1532,11 @@ window.savePrediction = async function(partidoId, btn) {
       username: currentUser,
       partidoId: partidoId,
       golesLocal: hInput,
-      golesVisitante: aInput
+      golesVisitante: aInput,
+      _t: Date.now()
     }).toString();
     
-    const res = await fetch(`${SCRIPT_URL}?${queryParams}`);
+    const res = await fetchWithTimeout(`${SCRIPT_URL}?${queryParams}`);
     const data = await res.json();
     
     // Re-buscar elementos del DOM tras el await, porque los filtros pudieron haber recreado la lista
@@ -1516,12 +1547,12 @@ window.savePrediction = async function(partidoId, btn) {
     if (btnSave) btnSave.disabled = false;
     if (hInputEl) hInputEl.disabled = false;
     if (aInputEl) aInputEl.disabled = false;
-    if (btnSave) {
-      matchCard = btnSave.closest('.match-card');
-      if (matchCard) {
-        const scoreBtns = matchCard.querySelectorAll('.btn-score');
-        scoreBtns.forEach(b => b.disabled = false);
-      }
+    
+    // Re-habilitar de forma robusta los botones de +/- buscando por input si el botón principal se recreó
+    const currentCard = (hInputEl || document.getElementById(`h-${partidoId}`))?.closest('.match-card');
+    if (currentCard) {
+      const scoreBtns = currentCard.querySelectorAll('.btn-score');
+      scoreBtns.forEach(b => b.disabled = false);
     }
 
     if (data.success) {
@@ -1534,7 +1565,11 @@ window.savePrediction = async function(partidoId, btn) {
         userPredictions.push({ partidoId: partidoId, golesLocal: hInput, golesVisitante: aInput });
       }
       
-      delete localInputCache[partidoId];
+      // Control de condición de carrera: borrar de la caché local únicamente si los valores coinciden con lo guardado
+      const currentCache = localInputCache[partidoId];
+      if (currentCache && currentCache.golesLocal == hInput && currentCache.golesVisitante == aInput) {
+        delete localInputCache[partidoId];
+      }
       saveLocalInputCache();
       
       // Destello verde de autoguardado en los inputs del marcador
@@ -1572,17 +1607,16 @@ window.savePrediction = async function(partidoId, btn) {
     if (btnSave) btnSave.disabled = false;
     if (hInputEl) hInputEl.disabled = false;
     if (aInputEl) aInputEl.disabled = false;
-    if (btnSave) {
-      matchCard = btnSave.closest('.match-card');
-      if (matchCard) {
-        const scoreBtns = matchCard.querySelectorAll('.btn-score');
-        scoreBtns.forEach(b => b.disabled = false);
-      }
-      btnSave.innerHTML = originalHtml;
+    
+    const currentCard = (hInputEl || document.getElementById(`h-${partidoId}`))?.closest('.match-card');
+    if (currentCard) {
+      const scoreBtns = currentCard.querySelectorAll('.btn-score');
+      scoreBtns.forEach(b => b.disabled = false);
     }
+    if (btnSave) btnSave.innerHTML = originalHtml;
     showToast('Error al guardar', 'error');
   }
-}
+};
 
 let globalPodioData = [];
 let podioSearchQuery = '';
@@ -1605,7 +1639,7 @@ async function loadPodio() {
   `;
   
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getPodio`);
+    const res = await fetchWithTimeout(`${SCRIPT_URL}?action=getPodio&_t=${Date.now()}`);
     const data = await res.json();
     
     if (data.success) {
@@ -1705,7 +1739,7 @@ function renderResultados() {
   const container = document.getElementById('resultados-list');
   container.innerHTML = '';
   
-  const pastMatches = matchesData.filter(m => m.status === 'FINISHED' || m.status === 'IN_PLAY');
+  const pastMatches = matchesData.filter(m => isMatchPast(m));
   
   // Aplicar filtros
   const filteredMatches = pastMatches.filter(match => {
@@ -2118,7 +2152,7 @@ async function openTiedUsersModal() {
     list.innerHTML = '<li style="padding: 15px; text-align: center;"><i class="fa-solid fa-circle-notch fa-spin"></i> Cargando...</li>';
     modal.classList.remove('hide');
     try {
-      const res = await fetch(`${SCRIPT_URL}?action=getPodio`);
+      const res = await fetchWithTimeout(`${SCRIPT_URL}?action=getPodio&_t=${Date.now()}`);
       const data = await res.json();
       if (data.success) {
         globalPodioData = data.podio || [];
@@ -2380,6 +2414,25 @@ const originalInitApp = initApp;
 initApp = async function() {
   await originalInitApp();
   checkStreak();
+};
+
+window.syncApp = async function(btn) {
+  if (!btn || btn.disabled) return;
+  const icon = btn.querySelector('i');
+  if (icon) icon.classList.add('fa-spin');
+  btn.disabled = true;
+  
+  try {
+    if (navigator.vibrate) navigator.vibrate(15);
+    await initApp();
+    showToast('Datos actualizados correctamente', 'success');
+  } catch (error) {
+    console.error(error);
+    showToast('Error al sincronizar datos', 'error');
+  } finally {
+    if (icon) icon.classList.remove('fa-spin');
+    btn.disabled = false;
+  }
 };
 
 

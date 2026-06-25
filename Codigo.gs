@@ -118,17 +118,31 @@ function doGet(e) {
       }
     }
     
+    // Buscar el correo correspondiente al nombre de usuario para evitar registros duplicados
+    const sheetUsuarios = SpreadsheetApp.getActive().getSheetByName('Usuarios');
+    const usersData = sheetUsuarios.getDataRange().getValues();
+    let email = "";
+    let officialUsername = username;
+    
+    const userRow = usersData.find((row, i) => i > 0 && row[1].toString().trim().toLowerCase() === usernameLower);
+    if (userRow) {
+      email = userRow[0].toString().trim().toLowerCase();
+      officialUsername = userRow[1].toString().trim(); // Mantener el nombre oficial con su mayúscula
+    }
+    
     const pronosData = sheetPronosticos.getDataRange().getValues();
     let updated = false;
     for (let i = 1; i < pronosData.length; i++) {
-      if (pronosData[i][0].toString().trim().toLowerCase() === usernameLower && pronosData[i][1] == partidoId) {
+      const rowUser = pronosData[i][0].toString().trim().toLowerCase();
+      if ((rowUser === usernameLower || (email !== "" && rowUser === email)) && pronosData[i][1] == partidoId) {
+        sheetPronosticos.getRange(i + 1, 1).setValue(officialUsername); // Unificar a username
         sheetPronosticos.getRange(i + 1, 3).setValue(golesLocal);
         sheetPronosticos.getRange(i + 1, 4).setValue(golesVisitante);
         updated = true; break;
       }
     }
     if (!updated) {
-      sheetPronosticos.appendRow([username, partidoId, golesLocal, golesVisitante]);
+      sheetPronosticos.appendRow([officialUsername, partidoId, golesLocal, golesVisitante]);
     }
     return jsonResponse({ success: true, message: 'Pronóstico guardado' });
   }
@@ -162,12 +176,17 @@ function doGet(e) {
     const data = SpreadsheetApp.getActive().getSheetByName('Pronosticos').getDataRange().getValues();
     const reqUser = (e.parameter.username || "").trim().toLowerCase();
     const reqEmail = (e.parameter.email || "").trim().toLowerCase();
-    const pronosticos = data.slice(1)
-                            .filter(row => {
-                              const r0 = row[0].toString().trim().toLowerCase();
-                              return r0 === reqUser || (reqEmail !== "" && r0 === reqEmail);
-                            })
-                            .map(row => ({ partidoId: row[1], golesLocal: row[2], golesVisitante: row[3] }));
+    
+    const pronosticosMap = {};
+    for (let i = 1; i < data.length; i++) {
+      const r0 = data[i][0].toString().trim().toLowerCase();
+      if (r0 === reqUser || (reqEmail !== "" && r0 === reqEmail)) {
+        const partidoId = data[i][1];
+        // El último en la hoja de cálculo sobreescribe los anteriores si hay duplicados
+        pronosticosMap[partidoId] = { partidoId: partidoId, golesLocal: data[i][2], golesVisitante: data[i][3] };
+      }
+    }
+    const pronosticos = Object.values(pronosticosMap);
     return jsonResponse({ success: true, pronosticos });
   }
   return jsonResponse({ success: false, message: 'Ruta no encontrada' });
@@ -265,6 +284,58 @@ function fetchResultadosMundial() {
   } catch (error) {}
 }
 
+function cleanDuplicatePronosticos() {
+  const ss = SpreadsheetApp.getActive();
+  const sheetPronos = ss.getSheetByName('Pronosticos');
+  const sheetUsuarios = ss.getSheetByName('Usuarios');
+  if (!sheetPronos || !sheetUsuarios) return;
+  
+  const usersData = sheetUsuarios.getDataRange().getValues();
+  const emailToUsername = {};
+  const usernameToOfficial = {};
+  for (let i = 1; i < usersData.length; i++) {
+    const email = (usersData[i][0] || "").toString().trim().toLowerCase();
+    const username = (usersData[i][1] || "").toString().trim();
+    if (username) {
+      emailToUsername[email] = username.toLowerCase();
+      usernameToOfficial[username.toLowerCase()] = username;
+    }
+  }
+  
+  const pronosRange = sheetPronos.getDataRange();
+  const pronosData = pronosRange.getValues();
+  const headers = pronosData[0];
+  
+  const uniquePronos = {};
+  for (let i = 1; i < pronosData.length; i++) {
+    const rawUser = (pronosData[i][0] || "").toString().trim();
+    const userLower = rawUser.toLowerCase();
+    const matchId = pronosData[i][1];
+    const golesLocal = pronosData[i][2];
+    const golesVisitante = pronosData[i][3];
+    
+    if (!rawUser || isNaN(matchId)) continue;
+    
+    let mappedUserLower = userLower;
+    if (emailToUsername[userLower]) {
+      mappedUserLower = emailToUsername[userLower];
+    }
+    
+    const officialUser = usernameToOfficial[mappedUserLower] || rawUser;
+    const key = mappedUserLower + "_" + matchId;
+    
+    // Si ya existe, se queda con la fila más reciente (de-duplicación)
+    uniquePronos[key] = [officialUser, matchId, golesLocal, golesVisitante];
+  }
+  
+  sheetPronos.clear();
+  sheetPronos.appendRow(headers);
+  const rowsToWrite = Object.values(uniquePronos);
+  if (rowsToWrite.length > 0) {
+    sheetPronos.getRange(2, 1, rowsToWrite.length, headers.length).setValues(rowsToWrite);
+  }
+}
+
 function recalcularTodosLosPuntos() {
   const ss = SpreadsheetApp.getActive();
   const sheetResultados = ss.getSheetByName('ResultadosReales');
@@ -272,7 +343,6 @@ function recalcularTodosLosPuntos() {
   const sheetUsuarios = ss.getSheetByName('Usuarios');
   
   // --- RESPALDO AUTOMÁTICO DE SEGURIDAD ---
-  // Antes de tocar cualquier punto, respaldamos en una ÚNICA hoja para evitar llenar la cuota de Google
   const backupName = 'Usuarios_Backup';
   let backupSheet = ss.getSheetByName(backupName);
   if (!backupSheet) {
@@ -286,8 +356,10 @@ function recalcularTodosLosPuntos() {
   }
   // ----------------------------------------
 
-  
-  // 1. Obtener todos los resultados reales terminados
+  // 1. Limpiar duplicados y unificar registros bajo username oficial
+  cleanDuplicatePronosticos();
+
+  // 2. Obtener todos los resultados reales terminados
   const resData = sheetResultados.getDataRange().getValues();
   const resultadosTerminados = {};
   for (let i = 1; i < resData.length; i++) {
@@ -302,12 +374,11 @@ function recalcularTodosLosPuntos() {
         aScore: aScore,
         ganadorReal: hScore > aScore ? 1 : (hScore < aScore ? -1 : 0)
       };
-      // Asegurar que quede marcado como SI procesado
       sheetResultados.getRange(i + 1, 7).setValue('SI');
     }
   }
-  
-  // 2. Calcular puntos totales por usuario basándonos en todos los pronósticos y todos los partidos
+
+  // 3. Calcular puntos usando los registros limpios y desduplicados
   const pronosData = sheetPronosticos.getDataRange().getValues();
   const userPoints = {};
   
@@ -336,17 +407,12 @@ function recalcularTodosLosPuntos() {
       userPoints[username] += pts;
     }
   }
-  
-  // 3. Sobrescribir los puntos finales a los usuarios
+
+  // 4. Escribir los puntos recalculados en la pestaña 'Usuarios'
   const usersData = sheetUsuarios.getDataRange().getValues();
   for (let i = 1; i < usersData.length; i++) {
-    const uNameB = (usersData[i][1] || "").toString().trim().toLowerCase();
-    const uNameA = (usersData[i][0] || "").toString().trim().toLowerCase();
-    
-    const ptsB = userPoints[uNameB] || 0;
-    const ptsA = (uNameA && uNameA !== uNameB) ? (userPoints[uNameA] || 0) : 0;
-    
-    const finalPts = ptsB + ptsA;
+    const usernameLower = (usersData[i][1] || "").toString().trim().toLowerCase();
+    const finalPts = userPoints[usernameLower] || 0;
     sheetUsuarios.getRange(i + 1, 4).setValue(finalPts);
   }
 }
@@ -576,5 +642,5 @@ function onOpen() {
 
 function menuRecalcular() {
   recalcularTodosLosPuntos();
-  SpreadsheetApp.getUi().alert('Éxito', 'Los puntos de los usuarios han sido sumados y actualizados correctamente según los resultados actuales de la hoja ResultadosReales. Ya no hay riesgo de puntos perdidos o duplicados.', SpreadsheetApp.getUi().ButtonSet.OK);
+  SpreadsheetApp.getUi().alert('Éxito', 'Se han unificado y limpiado los pronósticos duplicados (ej. correo vs usuario), y recalculado todos los puntos del Podio correctamente sin pérdidas.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
