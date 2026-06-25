@@ -1774,11 +1774,13 @@ function renderResultados() {
     return;
   }
   
-  // Ordenar por fecha
+  // Ordenar por fecha (descendente: el más reciente arriba)
   filteredMatches.sort((a, b) => {
-    if (!a.date) return 1;
-    if (!b.date) return -1;
-    return safeNewDate(a.date) - safeNewDate(b.date);
+    const da = safeNewDate(a.date);
+    const db = safeNewDate(b.date);
+    if (!da) return 1;
+    if (!db) return -1;
+    return db - da;
   });
   
   filteredMatches.forEach(match => {
