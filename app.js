@@ -894,7 +894,7 @@ async function loadMatchesData() {
     if (dataPartidos.success) matchesData = dataPartidos.matches;
     
     const userEmail = localStorage.getItem('quiniela_email') || "";
-    const resPronos = await fetchWithTimeout(`${SCRIPT_URL}?action=getMisPronosticos&username=${currentUser}&email=${encodeURIComponent(userEmail)}&_t=${Date.now()}`);
+    const resPronos = await fetchWithTimeout(`${SCRIPT_URL}?action=getMisPronosticos&username=${encodeURIComponent(currentUser)}&email=${encodeURIComponent(userEmail)}&_t=${Date.now()}`);
     const dataPronos = await resPronos.json();
     if (dataPronos.success) userPredictions = dataPronos.pronosticos;
     
@@ -2194,14 +2194,15 @@ function openNotifsModal() {
     if (dynSection) {
       dynSection.innerHTML = '';
       
-      // Alerta especial solo por hoy (30 de junio)
       const todayDate = new Date();
-      if (todayDate.getFullYear() === 2026 && todayDate.getMonth() === 5 && todayDate.getDate() === 30) {
+      const isJune30 = todayDate.getFullYear() === 2026 && todayDate.getMonth() === 5 && todayDate.getDate() === 30;
+      
+      if (isJune30) {
         dynSection.innerHTML += `
           <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid var(--danger); background: rgba(219, 68, 85, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
             <h5 style="color: var(--danger); margin-bottom: 4px; font-weight: 700; font-size: 0.95rem;"><i class="fa-solid fa-clock fa-fade"></i> ¡HORARIO ESPECIAL HOY!</h5>
             <p style="font-size: 0.85rem; color: var(--text-main); margin: 0; font-weight: 600;">
-              Por regla excepcional, los partidos de hoy **30 de junio** cierran a las **11:00 AM**. ¡Asegúrate de enviar tus pronósticos antes de esta hora!
+              Por regla excepcional, los partidos de hoy <strong>30 de junio</strong> cierran a las <strong>11:00 AM</strong>. ¡Asegúrate de enviar tus pronósticos antes de esta hora!
             </p>
           </div>
         `;
