@@ -26,6 +26,13 @@ function getMatchLockTime(matchDateVal) {
   }
   const datePart = dateStr.split(/[ T]/)[0];
   if (!datePart || datePart.length < 10) return new Date(0);
+  
+  // Regla especial para el 30 de junio de 2026: Cierra hoy a las 11:00 AM
+  if (datePart === "2026-06-30") {
+    const d = new Date("2026-06-30T11:00:00-06:00");
+    return isValidDate(d) ? d : new Date(0);
+  }
+  
   const d = new Date(datePart + "T00:00:00-06:00");
   return isValidDate(d) ? d : new Date(0);
 }

@@ -37,6 +37,13 @@ function getMatchLockTime(dateStr) {
   const str = dateStr.toString().trim();
   const datePart = str.split(/[ T]/)[0]; // Obtiene "YYYY-MM-DD"
   if (!datePart || datePart.length < 10) return null;
+  
+  // Regla especial para el 30 de junio de 2026: Cierra hoy a las 11:00 AM
+  if (datePart === "2026-06-30") {
+    const d = new Date("2026-06-30T11:00:00-06:00");
+    return isValidDate(d) ? d : null;
+  }
+  
   const d = new Date(`${datePart}T00:00:00-06:00`);
   return isValidDate(d) ? d : null;
 }
@@ -221,12 +228,8 @@ function checkAndSendNotifications() {
   
   const now = new Date();
   const oneDayMs = 24 * 60 * 60 * 1000;
-  const twoDaysMs = 2 * oneDayMs;
-  const sevenDaysMs = 7 * oneDayMs;
   
   let pending1Day = 0;
-  let pending2Days = 0;
-  let pending7Days = 0;
   
   matchesData.forEach(match => {
     const hasSavedProno = userPredictions.some(p => p.partidoId == match.partidoId && p.golesLocal !== '' && p.golesVisitante !== '');
@@ -236,15 +239,8 @@ function checkAndSendNotifications() {
       const lockTime = getMatchLockTime(match.date);
       if (lockTime) {
         const diff = lockTime - now;
-        
-        if (diff > 0) {
-          if (diff <= oneDayMs) {
-            pending1Day++;
-          } else if (diff <= twoDaysMs) {
-            pending2Days++;
-          } else if (diff <= sevenDaysMs) {
-            pending7Days++;
-          }
+        if (diff > 0 && diff <= oneDayMs) {
+          pending1Day++;
         }
       }
     }
@@ -253,25 +249,12 @@ function checkAndSendNotifications() {
   const lastSent = localStorage.getItem('last_notif_time');
   const timeSinceLast = lastSent ? (now.getTime() - parseInt(lastSent)) : Infinity;
   
-  if (timeSinceLast > 12 * 60 * 60 * 1000) {
-    let title = "Quiniela Mundial 2026";
-    let body = "";
-    
-    if (pending1Day > 0) {
-      body = `¡Alerta! Tienes ${pending1Day} partidos pendientes que cierran en menos de 24 horas. ¡Desliza la pantalla para recargar (o refresca en PC) y envía tus pronósticos!`;
-    } else if (pending2Days > 0) {
-      body = `Recordatorio: Tienes ${pending2Days} partidos pendientes que cierran en menos de 2 días. (Por favor desliza para recargar la página o refresca en PC)`;
-    } else if (pending7Days > 0) {
-      body = `Aviso: Tienes ${pending7Days} partidos pendientes que cierran en menos de 1 semana. (Por favor desliza para recargar la página o refresca en PC)`;
-    }
-    
-    if (body) {
-      new Notification(title, {
-        body: body,
-        icon: './icon.svg'
-      });
-      localStorage.setItem('last_notif_time', now.getTime().toString());
-    }
+  if (timeSinceLast > 12 * 60 * 60 * 1000 && pending1Day > 0) {
+    new Notification("Quiniela Mundial 2026", {
+      body: `¡Alerta! Tienes ${pending1Day} partido(s) pendiente(s) que cierra(n) en menos de 24 horas. ¡Actualiza y envía tus pronósticos!`,
+      icon: './icon.svg'
+    });
+    localStorage.setItem('last_notif_time', now.getTime().toString());
   }
 }
 
@@ -1418,6 +1401,11 @@ function renderQuiniela() {
             ${getTeamForm(match.equipoVisitante).map(f => `<span class="form-circle ${f}">${f === 'win' ? 'V' : (f === 'draw' ? 'E' : 'D')}</span>`).join('')}
           </div>
         </div>
+        ${parseInt(match.partidoId) >= 73 ? `
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 0.8rem; color: var(--text-muted); line-height: 1.35;">
+          <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> <strong>Regla de Penaltis:</strong> Si el partido se define en penaltis, el resultado final para la quiniela sumará los goles del tiempo regular/extras más los de la tanda de penaltis (goles + penaltis).
+        </div>
+        ` : ''}
       </div>
 
       <div class="match-status-bar">
@@ -2206,6 +2194,19 @@ function openNotifsModal() {
     if (dynSection) {
       dynSection.innerHTML = '';
       
+      // Alerta especial solo por hoy (30 de junio)
+      const todayDate = new Date();
+      if (todayDate.getFullYear() === 2026 && todayDate.getMonth() === 5 && todayDate.getDate() === 30) {
+        dynSection.innerHTML += `
+          <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid var(--danger); background: rgba(219, 68, 85, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
+            <h5 style="color: var(--danger); margin-bottom: 4px; font-weight: 700; font-size: 0.95rem;"><i class="fa-solid fa-clock fa-fade"></i> ¡HORARIO ESPECIAL HOY!</h5>
+            <p style="font-size: 0.85rem; color: var(--text-main); margin: 0; font-weight: 600;">
+              Por regla excepcional, los partidos de hoy **30 de junio** cierran a las **11:00 AM**. ¡Asegúrate de enviar tus pronósticos antes de esta hora!
+            </p>
+          </div>
+        `;
+      }
+      
       // 1. Alertas de partidos pendientes
       const upcomingMatches = matchesData.filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED');
       let pendingCount = 0;
@@ -2416,6 +2417,20 @@ const originalInitApp = initApp;
 initApp = async function() {
   await originalInitApp();
   checkStreak();
+  
+  // Alerta especial hoy (30 de junio): abrir modal y lanzar notificación
+  const todayDate = new Date();
+  if (todayDate.getFullYear() === 2026 && todayDate.getMonth() === 5 && todayDate.getDate() === 30) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification("Quiniela Mundial 2026", {
+        body: "¡Alerta Especial! Los partidos de hoy (30 de junio) cierran a las 11:00 AM. ¡No olvides enviar tus pronósticos!",
+        icon: './icon.svg'
+      });
+    }
+    setTimeout(() => {
+      openNotifsModal();
+    }, 1200);
+  }
 };
 
 window.syncApp = async function(btn) {
