@@ -1368,13 +1368,13 @@ function renderQuiniela() {
       <div class="score-controls-row">
         <div class="score-control">
           <button class="btn-score" onclick="changeScore('h-${match.partidoId}', -1)" ${isLocked ? 'disabled' : ''}>-</button>
-          <input type="number" id="h-${match.partidoId}" class="score-input" min="0" max="20" placeholder="-" value="${pLocal}" onchange="markAsPending(${match.partidoId})" ${isLocked ? 'disabled' : ''}>
+          <input type="number" id="h-${match.partidoId}" class="score-input" min="0" max="20" placeholder="-" value="${pLocal}" oninput="markAsPending(${match.partidoId})" ${isLocked ? 'disabled' : ''}>
           <button class="btn-score" onclick="changeScore('h-${match.partidoId}', 1)" ${isLocked ? 'disabled' : ''}>+</button>
         </div>
         <span style="font-weight: 800; color: var(--text-muted);">:</span>
         <div class="score-control">
           <button class="btn-score" onclick="changeScore('a-${match.partidoId}', -1)" ${isLocked ? 'disabled' : ''}>-</button>
-          <input type="number" id="a-${match.partidoId}" class="score-input" min="0" max="20" placeholder="-" value="${pVisit}" onchange="markAsPending(${match.partidoId})" ${isLocked ? 'disabled' : ''}>
+          <input type="number" id="a-${match.partidoId}" class="score-input" min="0" max="20" placeholder="-" value="${pVisit}" oninput="markAsPending(${match.partidoId})" ${isLocked ? 'disabled' : ''}>
           <button class="btn-score" onclick="changeScore('a-${match.partidoId}', 1)" ${isLocked ? 'disabled' : ''}>+</button>
         </div>
       </div>
