@@ -2185,93 +2185,13 @@ function closeStreakInfoModal() {
   if (modal) modal.classList.add('hide');
 }
 
-// --- NOTIFICATIONS MODAL ---
-function openNotifsModal() {
-  const modal = document.getElementById('notifs-modal');
-  const dynSection = document.getElementById('dynamic-notifs-section');
-  if (modal) {
-    modal.classList.remove('hide');
-    if (dynSection) {
-      dynSection.innerHTML = '';
-      
-      const todayDate = new Date();
-      const isJune30 = todayDate.getFullYear() === 2026 && todayDate.getMonth() === 5 && todayDate.getDate() === 30;
-      
-      if (isJune30) {
-        dynSection.innerHTML += `
-          <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid var(--danger); background: rgba(219, 68, 85, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
-            <h5 style="color: var(--danger); margin-bottom: 4px; font-weight: 700; font-size: 0.95rem;"><i class="fa-solid fa-clock fa-fade"></i> ¡HORARIO ESPECIAL HOY!</h5>
-            <p style="font-size: 0.85rem; color: var(--text-main); margin: 0; font-weight: 600;">
-              Por regla excepcional, los partidos de hoy <strong>30 de junio</strong> cierran a las <strong>11:00 AM</strong>. ¡Asegúrate de enviar tus pronósticos antes de esta hora!
-            </p>
-          </div>
-        `;
-      }
-      
-      // 1. Alertas de partidos pendientes
-      const upcomingMatches = matchesData.filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED');
-      let pendingCount = 0;
-      upcomingMatches.forEach(match => {
-        const prono = userPredictions.find(p => p.partidoId == match.partidoId);
-        const cached = localInputCache[match.partidoId];
-        let pLocal = '';
-        let pVisit = '';
-        if (cached) {
-          pLocal = cached.golesLocal;
-          pVisit = cached.golesVisitante;
-        } else if (prono) {
-          pLocal = String(prono.golesLocal).trim();
-          pVisit = String(prono.golesVisitante).trim();
-        }
-        if (pLocal === '' || pVisit === '') {
-          pendingCount++;
-        }
-      });
-      
-      if (pendingCount > 0) {
-        dynSection.innerHTML += `
-          <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid var(--warning); background: rgba(227, 116, 0, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
-            <h5 style="color: var(--warning); margin-bottom: 4px; font-weight: 700; font-size: 0.9rem;"><i class="fa-solid fa-circle-exclamation"></i> ¡Pronósticos Pendientes!</h5>
-            <p style="font-size: 0.85rem; color: var(--text-main); margin: 0;">Te faltan <strong>${pendingCount}</strong> partido(s) por pronosticar. No dejes ir puntos clave.</p>
-          </div>
-        `;
-      }
-      
-      // 2. Alertas de racha activa
-      const activeStreak = calculateActiveStreak();
-      if (activeStreak >= 3) {
-        dynSection.innerHTML += `
-          <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid #ff5722; background: rgba(255, 87, 34, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
-            <h5 style="color: #ff5722; margin-bottom: 4px; font-weight: 700; font-size: 0.9rem;"><i class="fa-solid fa-fire fa-bounce"></i> Racha de Fuego</h5>
-            <p style="font-size: 0.85rem; color: var(--text-main); margin: 0;">¡Increíble! Llevas <strong>${activeStreak}</strong> partidos seguidos sumando puntos en la Quiniela. 🔥</p>
-          </div>
-        `;
-      }
-      
-      // 3. Posición en el podio
-      const displayRank = document.getElementById('display-rank');
-      if (displayRank && displayRank.style.display !== 'none') {
-        const rankVal = displayRank.textContent;
-        dynSection.innerHTML += `
-          <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid var(--primary); background: rgba(11, 87, 208, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
-            <h5 style="color: var(--primary); margin-bottom: 4px; font-weight: 700; font-size: 0.9rem;"><i class="fa-solid fa-ranking-star"></i> Tu Lugar en la Tabla</h5>
-            <p style="font-size: 0.85rem; color: var(--text-main); margin: 0;">Actualmente te ubicas en la posición <strong>${rankVal}</strong> general.</p>
-          </div>
-        `;
-      }
-
-      // 4. Alerta de Novedades incitando a ir al perfil
-      dynSection.innerHTML += `
-        <div class="m-card" style="margin-bottom: 12px; border-left: 4px solid #9c27b0; background: rgba(156, 39, 176, 0.05); padding: 12px 15px; border-radius: 12px; box-shadow: none;">
-          <h5 style="color: #9c27b0; margin-bottom: 4px; font-weight: 700; font-size: 0.9rem;"><i class="fa-solid fa-wand-magic-sparkles"></i> ¡Avatar y Confeti de tu Selección!</h5>
-          <p style="font-size: 0.85rem; color: var(--text-main); margin: 0;">¡Ya puedes personalizar tu perfil! Elige tu equipo en la pestaña de <strong>Perfil</strong> y el confeti y tu avatar brillarán con sus colores oficiales. ¡Pruébalo ahora!</p>
-        </div>
-      `;
-    }
-  }
+// --- SECURITY/TRANSPARENCY MODAL ---
+function openSecurityModal() {
+  const modal = document.getElementById('security-modal');
+  if (modal) modal.classList.remove('hide');
 }
-function closeNotifsModal() {
-  const modal = document.getElementById('notifs-modal');
+function closeSecurityModal() {
+  const modal = document.getElementById('security-modal');
   if (modal) modal.classList.add('hide');
 }
 
@@ -2279,8 +2199,14 @@ if (document.getElementById('btn-share-profile')) document.getElementById('btn-s
 if (document.getElementById('btn-share-streak')) document.getElementById('btn-share-streak').addEventListener('click', shareApp);
 
 // --- ATTACH EVENT LISTENERS FOR MODALS ---
-const btnHeaderNotifs = document.getElementById('btn-header-notifs');
-if (btnHeaderNotifs) btnHeaderNotifs.addEventListener('click', openNotifsModal);
+const btnHeaderSecurity = document.getElementById('btn-header-security');
+if (btnHeaderSecurity) btnHeaderSecurity.addEventListener('click', openSecurityModal);
+
+const btnCloseSecurity = document.getElementById('btn-close-security');
+if (btnCloseSecurity) btnCloseSecurity.addEventListener('click', closeSecurityModal);
+
+const btnConfirmSecurity = document.getElementById('btn-confirm-security');
+if (btnConfirmSecurity) btnConfirmSecurity.addEventListener('click', closeSecurityModal);
 
 const btnHeaderStreak = document.getElementById('btn-header-streak');
 if (btnHeaderStreak) {
@@ -2312,14 +2238,7 @@ if (btnShowTiesAnyway) {
 const closeTiedBtn = document.getElementById('close-tied-btn');
 if (closeTiedBtn) closeTiedBtn.addEventListener('click', closeTiedUsersModal);
 
-// Mark as read logic
-const checkBadge = () => {
-  const badge = document.getElementById('notifs-badge');
-  if (badge && localStorage.getItem('quiniela_notifs_read_v3') === 'true') {
-    badge.style.display = 'none';
-  }
-};
-checkBadge(); // Check on load
+// Old badge check logic removed
 
 const btnTestConfetti = document.getElementById('btn-test-confetti');
 if (btnTestConfetti) {
@@ -2345,15 +2264,7 @@ if (btnTestConfetti) {
   });
 }
 
-const btnReadNotifs = document.getElementById('btn-read-notifs');
-if (btnReadNotifs) {
-  btnReadNotifs.addEventListener('click', () => {
-    localStorage.setItem('quiniela_notifs_read_v3', 'true');
-    checkBadge();
-    closeNotifsModal();
-    showToast('Novedades marcadas como leídas', 'success');
-  });
-}
+// Old notification buttons logic removed
 
 // Clic fuera para cerrar
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -2419,19 +2330,7 @@ initApp = async function() {
   await originalInitApp();
   checkStreak();
   
-  // Alerta especial hoy (30 de junio): abrir modal y lanzar notificación
-  const todayDate = new Date();
-  if (todayDate.getFullYear() === 2026 && todayDate.getMonth() === 5 && todayDate.getDate() === 30) {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification("Quiniela Mundial 2026", {
-        body: "¡Alerta Especial! Los partidos de hoy (30 de junio) cierran a las 11:00 AM. ¡No olvides enviar tus pronósticos!",
-        icon: './icon.svg'
-      });
-    }
-    setTimeout(() => {
-      openNotifsModal();
-    }, 1200);
-  }
+  // Notification timer removed
 };
 
 window.syncApp = async function(btn) {

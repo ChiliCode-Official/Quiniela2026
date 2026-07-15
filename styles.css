@@ -1504,6 +1504,18 @@ input[type="password"]::-ms-clear {
   color: #ff5722 !important;
 }
 
+/* Security Pulsing Icon */
+@keyframes pulse-security {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px #4caf50); }
+  50% { transform: scale(1.22); filter: drop-shadow(0 0 10px #2e7d32) drop-shadow(0 0 4px #4caf50); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 2px #4caf50); }
+}
+
+.security-pulsing {
+  animation: pulse-security 1.8s infinite ease-in-out !important;
+  color: #2e7d32 !important;
+}
+
 /* Tarjeta de Cierre Urgente (Glow Naranja-Rojo) */
 .match-card.urgent-card {
   border: 2px dashed #ff5722 !important;
