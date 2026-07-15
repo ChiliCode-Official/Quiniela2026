@@ -2200,13 +2200,34 @@ if (document.getElementById('btn-share-streak')) document.getElementById('btn-sh
 
 // --- ATTACH EVENT LISTENERS FOR MODALS ---
 const btnHeaderSecurity = document.getElementById('btn-header-security');
-if (btnHeaderSecurity) btnHeaderSecurity.addEventListener('click', openSecurityModal);
+if (btnHeaderSecurity) {
+  const handleOpen = (e) => {
+    e.preventDefault();
+    openSecurityModal();
+  };
+  btnHeaderSecurity.addEventListener('click', handleOpen);
+  btnHeaderSecurity.addEventListener('touchstart', handleOpen, { passive: false });
+}
 
 const btnCloseSecurity = document.getElementById('btn-close-security');
-if (btnCloseSecurity) btnCloseSecurity.addEventListener('click', closeSecurityModal);
+if (btnCloseSecurity) {
+  const handleClose = (e) => {
+    e.preventDefault();
+    closeSecurityModal();
+  };
+  btnCloseSecurity.addEventListener('click', handleClose);
+  btnCloseSecurity.addEventListener('touchstart', handleClose, { passive: false });
+}
 
 const btnConfirmSecurity = document.getElementById('btn-confirm-security');
-if (btnConfirmSecurity) btnConfirmSecurity.addEventListener('click', closeSecurityModal);
+if (btnConfirmSecurity) {
+  const handleClose = (e) => {
+    e.preventDefault();
+    closeSecurityModal();
+  };
+  btnConfirmSecurity.addEventListener('click', handleClose);
+  btnConfirmSecurity.addEventListener('touchstart', handleClose, { passive: false });
+}
 
 const btnHeaderStreak = document.getElementById('btn-header-streak');
 if (btnHeaderStreak) {
